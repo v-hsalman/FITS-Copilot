@@ -1,9 +1,9 @@
 {
     "name": "Azure Developer CLI",
-    "image": "mcr.microsoft.com/devcontainers/python:3.10",
+    "image": "mcr.microsoft.com/devcontainers/python:3.11",
     "features": {
         "ghcr.io/devcontainers/features/node:1": {
-            "version": "16",
+            "version": "21",
             "nodeGypDependencies": false
         },
         "ghcr.io/devcontainers/features/azure-cli:1.0.8": {},
@@ -14,7 +14,11 @@
             "extensions": [
                 "ms-azuretools.azure-dev",
                 "ms-azuretools.vscode-bicep",
-                "ms-python.python"
+                "ms-python.python",
+                "VisualStudioExptTeam.vscodeintellicode",
+                "ms-edgedevtools.vscode-edge-devtools",
+                "esbenp.prettier-vscode",
+                "ms-python.debugpy"
             ]
         },
         "codespaces": {
@@ -24,10 +28,12 @@
         }
     },
     "forwardPorts": [
-        5000
+        5000,
+        50505
     ],
     "remoteUser": "vscode",
     "hostRequirements": {
         "memory": "8gb"
-    }
+    },
+    "postCreateCommand": "pip3 install --user -r requirements-dev.txt && cd frontend && npm install"
 }

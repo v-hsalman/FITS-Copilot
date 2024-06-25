@@ -2,31 +2,48 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Sample App Backend",
-      "type": "python",
+      "name": "Backend",
+      "type": "debugpy",
       "request": "launch",
       "module": "quart",
       "cwd": "${workspaceFolder}",
       "env": {
-          "QUART_APP": "app:app",
-          "QUART_ENV": "development",
-          "QUART_DEBUG": "0"
+        "QUART_APP": "app:app",
+        "QUART_ENV": "development",
+        "QUART_DEBUG": "1"
       },
       "args": [
-          "run",
-          "--no-reload",
-          "-p 50505"
+        "run",
+        "--no-reload",
+        "-p 50505"
       ],
       "console": "integratedTerminal",
-      "justMyCode": false
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
     },
     {
-      "type": "chrome",
+      "name": "Frontend: dev",
+      "type": "node-terminal",
       "request": "launch",
-      "name": "Frontend: Launch Chrome debugger",
-      "url": "http://127.0.0.1:50505",
-      "webRoot": "${workspaceFolder}/frontend",
-      "smartStep": true
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend"
+    },
+    {
+      "name": "Frontend: watch",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run watch",
+      "cwd": "${workspaceFolder}/frontend"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Frontend & Backend",
+      "configurations": [
+        "Frontend: watch",
+        "Backend"
+      ],
+      "stopAll": true
     }
   ]
 }
