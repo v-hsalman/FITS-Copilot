@@ -12,7 +12,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { nord } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 import styles from './Chat.module.css'
-import Contoso from '../../assets/Contoso.svg'
+import FITS from '../../assets/FITS.svg'
 import { XSSAllowTags } from '../../constants/sanatizeAllowables'
 
 import {
@@ -31,13 +31,13 @@ import {
   ChatHistoryLoadingState,
   CosmosDBStatus,
   ErrorMessage,
-  ExecResults,
-} from "../../api";
-import { Answer } from "../../components/Answer";
-import { QuestionInput } from "../../components/QuestionInput";
-import { ChatHistoryPanel } from "../../components/ChatHistory/ChatHistoryPanel";
-import { AppStateContext } from "../../state/AppProvider";
-import { useBoolean } from "@fluentui/react-hooks";
+  ExecResults
+} from '../../api'
+import { Answer } from '../../components/Answer'
+import { QuestionInput } from '../../components/QuestionInput'
+import { ChatHistoryPanel } from '../../components/ChatHistory/ChatHistoryPanel'
+import { AppStateContext } from '../../state/AppProvider'
+import { useBoolean } from '@fluentui/react-hooks'
 
 const enum messageStatus {
   NotRunning = 'Not Running',
@@ -47,7 +47,6 @@ const enum messageStatus {
 
 const Chat = () => {
   const appStateContext = useContext(AppStateContext)
-  const ui = appStateContext?.state.frontendSettings?.ui
   const AUTH_ENABLED = appStateContext?.state.frontendSettings?.auth_enabled
   const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -705,22 +704,21 @@ const Chat = () => {
   }
 
   const parsePlotFromMessage = (message: ChatMessage) => {
-    if (message?.role && message?.role === "tool") {
+    if (message?.role && message?.role === 'tool') {
       try {
-        const execResults = JSON.parse(message.content) as AzureSqlServerExecResults;
-        const codeExecResult = execResults.all_exec_results.at(-1)?.code_exec_result;
+        const execResults = JSON.parse(message.content) as AzureSqlServerExecResults
+        const codeExecResult = execResults.all_exec_results.at(-1)?.code_exec_result
         if (codeExecResult === undefined) {
-          return null;
+          return null
         }
-        return codeExecResult;
-      }
-      catch {
-        return null;
+        return codeExecResult
+      } catch {
+        return null
       }
       // const execResults = JSON.parse(message.content) as AzureSqlServerExecResults;
       // return execResults.all_exec_results.at(-1)?.code_exec_result;
     }
-    return null;
+    return null
   }
 
   const disabledButton = () => {
@@ -766,9 +764,11 @@ const Chat = () => {
           <div className={styles.chatContainer}>
             {!messages || messages.length < 1 ? (
               <Stack className={styles.chatEmptyState}>
-                <img src={ui?.chat_logo ? ui.chat_logo : Contoso} className={styles.chatIcon} aria-hidden="true" />
-                <h1 className={styles.chatEmptyStateTitle}>{ui?.chat_title}</h1>
-                <h2 className={styles.chatEmptyStateSubtitle}>{ui?.chat_description}</h2>
+                <img src={FITS} className={styles.chatIcon} aria-hidden="true" />
+                <h1 className={styles.chatEmptyStateTitle}>What can I help you with?</h1>
+                <h2 className={styles.chatEmptyStateSubtitle}>
+                  Designed to provide guidance and assistance for your human resources processes
+                </h2>
               </Stack>
             ) : (
               <div className={styles.chatMessageStream} style={{ marginBottom: isLoading ? '40px' : '0px' }} role="log">
@@ -809,7 +809,7 @@ const Chat = () => {
                     <div className={styles.chatMessageGpt}>
                       <Answer
                         answer={{
-                          answer: "Generating answer...",
+                          answer: 'Generating answer...',
                           citations: [],
                           plotly_data: null
                         }}
@@ -977,30 +977,43 @@ const Chat = () => {
                 />
               </Stack>
               <Stack horizontalAlign="space-between">
-                {execResults.map((execResult) => {
+                {execResults.map(execResult => {
                   return (
                     <Stack className={styles.exectResultList} verticalAlign="space-between">
-                      <><span>Intent:</span> <p>{execResult.intent}</p></>
-                      {execResult.search_query && <><span>Search Query:</span>
-                        <SyntaxHighlighter
-                          style={nord}
-                          wrapLines={true}
-                          lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }}
-                          language="sql"
-                          PreTag="p">
-                          {execResult.search_query}
-                        </SyntaxHighlighter></>}
-                      {execResult.search_result && <><span>Search Result:</span> <p>{execResult.search_result}</p></>}
-                      {execResult.code_generated && <><span>Code Generated:</span>
-                        <SyntaxHighlighter
-                          style={nord}
-                          wrapLines={true}
-                          lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }}
-                          language="python"
-                          PreTag="p">
-                          {execResult.code_generated}
-                        </SyntaxHighlighter>
-                      </>}
+                      <>
+                        <span>Intent:</span> <p>{execResult.intent}</p>
+                      </>
+                      {execResult.search_query && (
+                        <>
+                          <span>Search Query:</span>
+                          <SyntaxHighlighter
+                            style={nord}
+                            wrapLines={true}
+                            lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }}
+                            language="sql"
+                            PreTag="p">
+                            {execResult.search_query}
+                          </SyntaxHighlighter>
+                        </>
+                      )}
+                      {execResult.search_result && (
+                        <>
+                          <span>Search Result:</span> <p>{execResult.search_result}</p>
+                        </>
+                      )}
+                      {execResult.code_generated && (
+                        <>
+                          <span>Code Generated:</span>
+                          <SyntaxHighlighter
+                            style={nord}
+                            wrapLines={true}
+                            lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }}
+                            language="python"
+                            PreTag="p">
+                            {execResult.code_generated}
+                          </SyntaxHighlighter>
+                        </>
+                      )}
                     </Stack>
                   )
                 })}
