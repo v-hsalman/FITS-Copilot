@@ -797,7 +797,7 @@ async def clear_messages():
 
 @bp.route("/token", methods=["GET"])
 def token():
-    subscription_key = os.getenv("AZURE_OPENAI_KEY")
+    subscription_key = app_settings.azure_openai.key 
     fetch_token_url = 'https://ai-services-fits-copilot.cognitiveservices.azure.com/sts/v1.0/issueToken'
     headers = {
         'Ocp-Apim-Subscription-Key': subscription_key
