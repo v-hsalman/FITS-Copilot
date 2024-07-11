@@ -4,6 +4,7 @@ import os
 import logging
 import uuid
 import httpx
+import requests
 from quart import (
     Blueprint,
     Quart,
@@ -793,6 +794,18 @@ async def clear_messages():
         logging.exception("Exception in /history/clear_messages")
         return jsonify({"error": str(e)}), 500
 
+
+@bp.route("/token", methods=["GET"])
+def token():
+    subscription_key = os.getenv("AZURE_OPENAI_KEY")
+    fetch_token_url = 'https://ai-services-fits-copilot.cognitiveservices.azure.com/sts/v1.0/issueToken'
+    headers = {
+        'Ocp-Apim-Subscription-Key': subscription_key
+    }
+    response = requests.post(fetch_token_url, headers=headers)
+    access_token = str(response.text)
+    return jsonify({"token":access_token})
+    
 
 @bp.route("/history/ensure", methods=["GET"])
 async def ensure_cosmos():
