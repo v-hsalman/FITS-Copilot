@@ -9,9 +9,6 @@
   flex: 1;
   display: flex;
   margin-top: 0px;
-  margin-bottom: 20px;
-  margin-left: 20px;
-  margin-right: 20px;
   gap: 5px;
 }
 
@@ -20,13 +17,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: radial-gradient(108.78% 108.78% at 50.02% 19.78%, #ffffff 57.29%, #eef6fe 100%);
-  box-shadow:
-    0px 2px 4px rgba(0, 0, 0, 0.14),
-    0px 0px 2px rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
+  background: radial-gradient(108.78% 108.78% at 50.02% 19.78%, #ffffff 57.29%, #f5faff 100%);
   overflow-y: auto;
-  max-height: calc(100vh - 100px);
 }
 
 .chatEmptyState {
@@ -137,14 +129,13 @@
 }
 
 .chatInput {
+  width: 100%;
   position: sticky;
   flex: 0 0 100px;
   padding-top: 12px;
   padding-bottom: 24px;
   padding-left: 24px;
   padding-right: 24px;
-  width: calc(100% - 100px);
-  max-width: 1028px;
   margin-bottom: 50px;
   margin-top: 8px;
 }
