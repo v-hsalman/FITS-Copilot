@@ -352,3 +352,15 @@ export const historyMessageFeedback = async (messageId: string, feedback: string
     })
   return response
 }
+
+export const fetchSpeechToken = async() => {
+  try{
+    const response = await fetch('/token', {
+      method: 'GET'
+    })
+    const data = await response.json()
+    return data
+  }catch(err){
+    return err
+  }
+}
