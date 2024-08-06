@@ -1,32 +1,66 @@
-import { forwardRef, useState, useEffect, useRef } from 'react'
-import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk'
-import localVideo from '../assets/lisa-casual-sitting-idle.mp4'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import {
+  AvatarSynthesizer,
+  AvatarVideoFormat,
+  SpeechConfig,
+  AvatarConfig,
+  ResultReason
+} from 'microsoft-cognitiveservices-speech-sdk'
 
 const speechSubscriptionKey = import.meta.env.VITE_SPEECH_SUBSCRIPTION_KEY
 
-export default function useAvatar() {
-  const [avatarSynthesizerState, setAvatarSynthesizerState] = useState<SpeechSDK.AvatarSynthesizer | null>(null)
-  const [avatarSpeaking, setAvatarSpeaking] = useState(false)
+type AvatarProperties = {
+  remoteAvatarRef: HTMLDivElement | null
+  localAvatarRef: HTMLVideoElement | null
+  isSpeaking: boolean
+  sessionActive: boolean
+  avatarSynthesizerState: AvatarSynthesizer | undefined
+}
 
-  const disconnectAvatar = async () => {
+export default function useAvatar() {
+  const [avatarSynthesizerState, setAvatarSynthesizerState] = useState<AvatarSynthesizer>()
+  const avatarSynthesizerRef = useRef<AvatarSynthesizer>()
+  const [avatar, setAvatar] = useState<AvatarProperties>({
+    avatarSynthesizerState: undefined,
+    remoteAvatarRef: null,
+    localAvatarRef: null,
+    isSpeaking: false,
+    sessionActive: false
+  })
+  useEffect(() => {
+    avatarSynthesizerRef.current = avatarSynthesizerState
+  }, [avatarSynthesizerState])
+
+  const updateVideoRefs = (
+    remoteVideoRef: React.MutableRefObject<HTMLDivElement | null>,
+    localVideoRef: React.MutableRefObject<HTMLVideoElement | null>
+  ) => {
+    setAvatar(prevAvatar => {
+      return { ...prevAvatar, remoteAvatarRef: remoteVideoRef.current, localAvatarRef: localVideoRef.current }
+    })
+  }
+
+  const disconnectAvatar = useCallback(async () => {
     try {
-      setAvatarSpeaking(false)
-      await avatarSynthesizerState?.stopAvatarAsync()
+      await avatarSynthesizerRef.current?.close()
+      setAvatar(prevAvatar => {
+        return { ...prevAvatar, isSpeaking: false, sessionActive: false }
+      })
     } catch (err) {
       console.log('Failed to disconnect avatar. Error: ' + err)
     }
-  }
+  }, [avatar])
 
-  const speak = async (text: string, avatarVideoRef: any) => {
+  const connectAvatar = useCallback(async () => {
     try {
-      const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(speechSubscriptionKey, 'westus2')
+      const speechConfig = SpeechConfig.fromSubscription(speechSubscriptionKey, 'westus2')
       speechConfig.speechSynthesisLanguage = 'en-US'
       speechConfig.speechSynthesisVoiceName = 'en-US-AvaMultilingualNeural'
 
-      const videoFormat = new SpeechSDK.AvatarVideoFormat()
-      const avatarConfig = new SpeechSDK.AvatarConfig('lisa', 'casual-sitting', videoFormat)
+      const videoFormat = new AvatarVideoFormat()
+      const avatarConfig = new AvatarConfig('lisa', 'casual-sitting', videoFormat)
 
-      let avatarSynthesizer = new SpeechSDK.AvatarSynthesizer(speechConfig, avatarConfig)
+      let avatarSynthesizer = new AvatarSynthesizer(speechConfig, avatarConfig)
       setAvatarSynthesizerState(avatarSynthesizer)
 
       const getIceCretdentials = await fetch(
@@ -60,8 +94,7 @@ export default function useAvatar() {
           audioElement.onplaying = () => {
             console.log(`Playing audio track`)
           }
-
-          avatarVideoRef.current.appendChild(audioElement)
+          avatar.remoteAvatarRef?.appendChild(audioElement)
         }
 
         if (event.track.kind === 'video') {
@@ -72,25 +105,35 @@ export default function useAvatar() {
           videoElement.playsInline = true
 
           videoElement.onplaying = () => {
-            for (var i = 0; i < avatarVideoRef.current.childNodes.length; i++) {
-              if (avatarVideoRef.current.childNodes[i].localName === event.track.kind) {
-                avatarVideoRef.current.removeChild(avatarVideoRef.current.childNodes[i])
+            if (avatar.remoteAvatarRef?.childNodes) {
+              for (var i = 0; i < avatar.remoteAvatarRef.childNodes.length; i++) {
+                if ((avatar.remoteAvatarRef?.childNodes[i] as Element).localName === event.track.kind) {
+                  avatar.remoteAvatarRef?.removeChild(avatar.remoteAvatarRef?.childNodes[i])
+                }
               }
             }
 
-            avatarVideoRef.appendChild(videoElement)
-            console.log(`Video track connected`)
+            avatar.remoteAvatarRef?.appendChild(videoElement)
+            videoElement.style.width = '100%'
+            videoElement.style.height = '100%'
+            videoElement.style.objectFit = 'cover'
+            if (avatar.remoteAvatarRef) {
+              avatar.remoteAvatarRef.style.width = '30%'
+            }
+            if (avatar.localAvatarRef) {
+              avatar.localAvatarRef.hidden = true
+            }
+            setAvatar(prevAvatar => {
+              return {
+                ...prevAvatar,
+                sessionActive: true
+              }
+            })
           }
         }
       }
 
       peerConnection.oniceconnectionstatechange = e => {
-        if (peerConnection.iceConnectionState === 'failed' || 'disconnected' || 'closed') {
-          disconnectAvatar()
-        }
-        if (peerConnection.iceConnectionState === 'connected') {
-          setAvatarSpeaking(true)
-        }
         console.log('WebRTC status: ' + peerConnection.iceConnectionState)
       }
 
@@ -99,52 +142,54 @@ export default function useAvatar() {
 
       const avatarStart = await avatarSynthesizer.startAvatarAsync(peerConnection)
 
-      if (avatarStart.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+      if (avatarStart.reason === ResultReason.SynthesizingAudioCompleted) {
         console.log('[' + new Date().toISOString() + '] Avatar started. Result ID: ' + avatarStart.resultId)
       } else {
-        if (avatarStart.reason === SpeechSDK.ResultReason.Canceled) {
+        if (avatarStart.reason === ResultReason.Canceled) {
           console.log('Unable to start avatar: ' + avatarStart.errorDetails)
         }
       }
 
-      const result = await avatarSynthesizer.speakTextAsync(text)
-      if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
-        console.log('Speech and avatar synthesized to video stream:')
-      } else {
-        console.log('Unable to speak. Result ID: ' + result.resultId)
-        console.log('Error: ' + result.errorDetails)
+      peerConnection.oniceconnectionstatechange = e => {
+        console.log('WebRTC status: ' + peerConnection.iceConnectionState)
+        if (peerConnection.iceConnectionState === 'disconnected') {
+          if (avatar.localAvatarRef && avatar.remoteAvatarRef) {
+            avatar.localAvatarRef.hidden = false
+            avatar.remoteAvatarRef.style.width = '0.1px'
+          }
+        }
       }
-      await disconnectAvatar()
     } catch (err) {
       console.log('Failed to speak. Error: ' + err)
-      await disconnectAvatar()
     }
-  }
+  }, [avatar])
 
-  const Avatar = forwardRef<HTMLDivElement, {}>(function Avatar(props, ref) {
-    return (
-      <>
-        <div
-          id="AvatarVideo"
-          ref={ref}
-          style={{ display: avatarSpeaking ? 'visible' : 'none', height: '100%', width: '30%', objectFit: 'cover' }}>
-          Avatar
-        </div>
-        <video
-          muted
-          autoPlay
-          loop
-          style={{
-            display: avatarSpeaking ? 'none' : 'visible',
-            height: '100%',
-            width: '30%',
-            objectFit: 'cover'
-          }}>
-          <source src={localVideo} type="video/mp4" />
-        </video>
-      </>
-    )
-  })
-
-  return { Avatar, speak, disconnectAvatar }
+  const speak = useCallback(
+    async (text: string) => {
+      if (avatar.sessionActive === false) {
+        await connectAvatar()
+      }
+      setAvatar(prevAvatar => {
+        return { ...prevAvatar, isSpeaking: true }
+      })
+      try {
+        const result = await avatarSynthesizerRef.current?.speakTextAsync(text)
+        if (result?.reason === ResultReason.SynthesizingAudioCompleted) {
+          console.log('Speech and avatar synthesized to video stream:')
+          console.log('Disconnecting avatar')
+          await disconnectAvatar()
+        } else {
+          console.log('Unable to speak. Result ID: ' + result?.resultId)
+          console.log('Error: ' + result?.errorDetails)
+        }
+        setAvatar(prevAvatar => {
+          return { ...prevAvatar, isSpeaking: false }
+        })
+      } catch (err) {
+        console.log('Failed to speak. Error: ' + err)
+      }
+    },
+    [avatar]
+  )
+  return { speak, connectAvatar, disconnectAvatar, updateVideoRefs, avatar }
 }

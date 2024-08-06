@@ -84,7 +84,7 @@ export const QuestionInput = ({ onSend, disabled, clearOnSend, onNewChat, onClea
   }
 
   return (
-    <Stack className={styles.questionInputContainer} onClick={focusInput} placeholder="Type a new question...">
+    <Stack className={styles.questionInputContainer} onClick={focusInput}>
       <textarea
         disabled={disabled || micState === 'recording'}
         ref={inputRef}

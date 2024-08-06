@@ -38,9 +38,9 @@ import { QuestionInput } from '../../components/QuestionInput'
 import { ChatHistoryPanel } from '../../components/ChatHistory/ChatHistoryPanel'
 import { AppStateContext } from '../../state/AppProvider'
 import { useBoolean } from '@fluentui/react-hooks'
-import { Button } from '@fluentui/react-components'
 
 import useAvatar from '../../hooks/useAvatar'
+import Avatar from '../../hooks/Avatar'
 
 const enum messageStatus {
   NotRunning = 'Not Running',
@@ -66,8 +66,14 @@ const Chat = () => {
   const [hideErrorDialog, { toggle: toggleErrorDialog }] = useBoolean(true)
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
 
-  const { Avatar, disconnectAvatar, speak } = useAvatar()
-  const avatarRef = useRef<HTMLDivElement>(null)
+  const { speak, connectAvatar, updateVideoRefs } = useAvatar()
+
+  const remoteVideoRef = useRef<HTMLDivElement | null>(null)
+  const localVideoRef = useRef<HTMLVideoElement | null>(null)
+
+  useEffect(() => {
+    updateVideoRefs(remoteVideoRef, localVideoRef)
+  }, [])
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -210,7 +216,6 @@ const Chat = () => {
       const response = await conversationApi(request, abortController.signal)
       if (response?.body) {
         const reader = response.body.getReader()
-
         let runningText = ''
         while (true) {
           setProcessMessages(messageStatus.Processing)
@@ -363,6 +368,7 @@ const Chat = () => {
         return
       }
       if (response?.body) {
+        await connectAvatar()
         const reader = response.body.getReader()
 
         let runningText = ''
@@ -439,6 +445,7 @@ const Chat = () => {
           abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
           return
         }
+        await speak(resultConversation.messages[resultConversation.messages.length - 1].content)
         appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation })
         isEmpty(toolMessage)
           ? setMessages([...messages, assistantMessage])
@@ -727,6 +734,10 @@ const Chat = () => {
     return null
   }
 
+  const timeBetweenDates = (date: string) => {
+    return Number(new Date(date)) - Number(new Date())
+  }
+
   const disabledButton = () => {
     return (
       isLoading ||
@@ -768,7 +779,7 @@ const Chat = () => {
       ) : (
         <Stack horizontal className={styles.chatRoot}>
           <Stack horizontal>
-            <Avatar ref={avatarRef} />
+            <Avatar localVideoRef={localVideoRef} remoteVideoRef={remoteVideoRef} />
             <div className={styles.chatContainer}>
               {!messages || messages.length < 1 ? (
                 <Stack className={styles.chatEmptyState}>
@@ -777,15 +788,6 @@ const Chat = () => {
                   <h2 className={styles.chatEmptyStateSubtitle}>
                     Designed to provide guidance and assistance for your human resources processes
                   </h2>
-                  <Stack horizontal tokens={{ childrenGap: 24 }}>
-                    <Button appearance="primary" onClick={() => speak('Hello There!', avatarRef)}>
-                      Make Avatar Speak
-                    </Button>
-
-                    <Button onClick={disconnectAvatar} color="a">
-                      Disconnect Avatar
-                    </Button>
-                  </Stack>
                 </Stack>
               ) : (
                 <div
