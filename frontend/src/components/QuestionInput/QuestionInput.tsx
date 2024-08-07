@@ -12,7 +12,6 @@ import { fetchSpeechToken } from '../../api'
 
 interface Props {
   onSend: (question: string) => void
-  onSend: (question: string) => void
   disabled: boolean
   clearOnSend?: boolean
   onNewChat: () => void
