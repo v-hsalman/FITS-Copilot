@@ -73,6 +73,5 @@ jobs:
         uses: azure/webapps-deploy@v2
         id: deploy-to-webapp
         with:
-          app-name: 'mr-copilot-development'
-          slot-name: 'dev'
+          app-name: 'fits-copilot'
           
