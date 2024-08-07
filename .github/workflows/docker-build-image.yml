@@ -1,0 +1,20 @@
+name: Docker Image Build
+
+on:
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:      
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Build the Docker image
+      run:         
+        docker build . --file WebApp.Dockerfile --tag mr-copilot:$(date +'%Y-%m-%d')_$GITHUB_RUN_NUMBER
+      
