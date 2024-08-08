@@ -442,6 +442,9 @@ async def add_conversation():
         request_body = await request.get_json()
         history_metadata["conversation_id"] = conversation_id
         request_body["history_metadata"] = history_metadata
+        user_name= authenticated_user['user_name']
+        last_message = request_body["messages"][-1]
+        last_message["content"] = f"{user_name} says: {last_message['content']}"
         return await conversation_internal(request_body, request.headers)
 
     except Exception as e:
