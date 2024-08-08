@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
 import { IconButton, Dialog, DialogType, Stack } from '@fluentui/react'
-import { SquareRegular, ShieldLockRegular, ErrorCircleRegular } from '@fluentui/react-icons'
+import { SquareRegular, ShieldLockRegular, ErrorCircleRegular, StopRegular } from '@fluentui/react-icons'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -41,6 +41,7 @@ import { useBoolean } from '@fluentui/react-hooks'
 
 import useAvatar from '../../hooks/useAvatar'
 import Avatar from '../../hooks/Avatar'
+import { Button } from '@fluentui/react-components'
 
 const enum messageStatus {
   NotRunning = 'Not Running',
@@ -66,7 +67,7 @@ const Chat = () => {
   const [hideErrorDialog, { toggle: toggleErrorDialog }] = useBoolean(true)
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
 
-  const { speak, connectAvatar, updateVideoRefs } = useAvatar()
+  const { speak, connectAvatar, updateVideoRefs, stopAvatarSpeech, avatar } = useAvatar()
 
   const remoteVideoRef = useRef<HTMLDivElement | null>(null)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
@@ -756,116 +757,121 @@ const Chat = () => {
         </Stack>
       ) : (
         <Stack horizontal className={styles.chatRoot}>
-          <Stack horizontal>
-            <Avatar localVideoRef={localVideoRef} remoteVideoRef={remoteVideoRef} />
-            <div className={styles.chatContainer}>
-              {!messages || messages.length < 1 ? (
-                <Stack className={styles.chatEmptyState}>
-                  <img src={FITS} className={styles.chatIcon} aria-hidden="true" />
-                  <h1 className={styles.chatEmptyStateTitle}>What can I help you with?</h1>
-                  <h2 className={styles.chatEmptyStateSubtitle}>
-                    Designed to provide guidance and assistance for your human resources processes
-                  </h2>
-                </Stack>
-              ) : (
-                <div
-                  className={styles.chatMessageStream}
-                  style={{ marginBottom: isLoading ? '40px' : '0px' }}
-                  role="log">
-                  {messages.map((answer, index) => (
-                    <>
-                      {answer.role === 'user' ? (
-                        <div className={styles.chatMessageUser} tabIndex={0}>
-                          <div className={styles.chatMessageUserMessage}>{answer.content}</div>
-                        </div>
-                      ) : answer.role === 'assistant' ? (
-                        <div className={styles.chatMessageGpt}>
-                          <Answer
-                            answer={{
-                              answer: answer.content,
-                              citations: parseCitationFromMessage(messages[index - 1]),
-                              message_id: answer.id,
-                              feedback: answer.feedback,
-                              exec_results: execResults
-                            }}
-                            onCitationClicked={c => onShowCitation(c)}
-                            onExectResultClicked={() => onShowExecResult()}
-                          />
-                        </div>
-                      ) : answer.role === ERROR ? (
-                        <div className={styles.chatMessageError}>
-                          <Stack horizontal className={styles.chatMessageErrorContent}>
-                            <ErrorCircleRegular
-                              className={styles.errorIcon}
-                              style={{ color: 'rgba(182, 52, 67, 1)' }}
-                            />
-                            <span>Error</span>
-                          </Stack>
-                          <span className={styles.chatMessageErrorContent}>{answer.content}</span>
-                        </div>
-                      ) : null}
-                    </>
-                  ))}
-                  {showLoadingMessage && (
-                    <>
+          <Avatar avatar={avatar} localVideoRef={localVideoRef} remoteVideoRef={remoteVideoRef} />
+          <div className={styles.chatContainer}>
+            {!messages || messages.length < 1 ? (
+              <Stack className={styles.chatEmptyState}>
+                <img src={FITS} className={styles.chatIcon} aria-hidden="true" />
+                <h1 className={styles.chatEmptyStateTitle}>What can I help you with?</h1>
+                <h2 className={styles.chatEmptyStateSubtitle}>
+                  Designed to provide guidance and assistance for your human resources processes
+                </h2>
+              </Stack>
+            ) : (
+              <div className={styles.chatMessageStream} style={{ marginBottom: isLoading ? '40px' : '0px' }} role="log">
+                {messages.map((answer, index) => (
+                  <>
+                    {answer.role === 'user' ? (
+                      <div className={styles.chatMessageUser} tabIndex={0}>
+                        <div className={styles.chatMessageUserMessage}>{answer.content}</div>
+                      </div>
+                    ) : answer.role === 'assistant' ? (
                       <div className={styles.chatMessageGpt}>
                         <Answer
                           answer={{
-                            answer: 'Generating answer...',
-                            citations: []
+                            answer: answer.content,
+                            citations: parseCitationFromMessage(messages[index - 1]),
+                            message_id: answer.id,
+                            feedback: answer.feedback,
+                            exec_results: execResults
                           }}
-                          onCitationClicked={() => null}
-                          onExectResultClicked={() => null}
+                          onCitationClicked={c => onShowCitation(c)}
+                          onExectResultClicked={() => onShowExecResult()}
                         />
                       </div>
-                    </>
-                  )}
-                  <div ref={chatMessageStreamEnd} />
-                </div>
-              )}
+                    ) : answer.role === ERROR ? (
+                      <div className={styles.chatMessageError}>
+                        <Stack horizontal className={styles.chatMessageErrorContent}>
+                          <ErrorCircleRegular className={styles.errorIcon} style={{ color: 'rgba(182, 52, 67, 1)' }} />
+                          <span>Error</span>
+                        </Stack>
+                        <span className={styles.chatMessageErrorContent}>{answer.content}</span>
+                      </div>
+                    ) : null}
+                  </>
+                ))}
+                {showLoadingMessage && (
+                  <>
+                    <div className={styles.chatMessageGpt}>
+                      <Answer
+                        answer={{
+                          answer: 'Generating answer...',
+                          citations: []
+                        }}
+                        onCitationClicked={() => null}
+                        onExectResultClicked={() => null}
+                      />
+                    </div>
+                  </>
+                )}
+                <div ref={chatMessageStreamEnd} />
+              </div>
+            )}
 
-              <Stack horizontal className={styles.chatInput}>
-                {isLoading && messages.length > 0 && (
-                  <Stack
-                    horizontal
-                    className={styles.stopGeneratingContainer}
-                    role="button"
-                    aria-label="Stop generating"
-                    tabIndex={0}
+            <Stack className={styles.chatInput}>
+              <Stack horizontal className={styles.stopButtons}>
+                {avatar.isSpeaking && (
+                  <Button
+                    shape="circular"
+                    icon={<StopRegular />}
+                    onClick={() => {
+                      stopAvatarSpeech()
+                      setIsLoading(false)
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        stopAvatarSpeech()
+                        setIsLoading(false)
+                      }
+                    }}>
+                    Stop Avatar's Speech
+                  </Button>
+                )}
+                {isLoading && messages.length > 0 && !avatar.isSpeaking && (
+                  <Button
+                    shape="circular"
+                    icon={<StopRegular />}
                     onClick={stopGenerating}
                     onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null)}>
-                    <SquareRegular className={styles.stopGeneratingIcon} aria-hidden="true" />
-                    <span className={styles.stopGeneratingText} aria-hidden="true">
-                      Stop generating
-                    </span>
-                  </Stack>
+                    Stop Generating
+                  </Button>
                 )}
-                <Stack>
-                  <Dialog
-                    hidden={hideErrorDialog}
-                    onDismiss={handleErrorDialogClose}
-                    dialogContentProps={errorDialogContentProps}
-                    modalProps={modalProps}></Dialog>
-                </Stack>
-                <QuestionInput
-                  clearOnSend
-                  disabled={isLoading}
-                  onNewChat={newChat}
-                  chatState={disabledButton()}
-                  onSend={question => {
-                    appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-                      ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
-                      : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
-                  }}
-                  onClearChat={
-                    appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
-                      ? clearChat
-                      : newChat
-                  }
-                />
               </Stack>
-            </div>
-          </Stack>
+              <Stack>
+                <Dialog
+                  hidden={hideErrorDialog}
+                  onDismiss={handleErrorDialogClose}
+                  dialogContentProps={errorDialogContentProps}
+                  modalProps={modalProps}></Dialog>
+              </Stack>
+              <QuestionInput
+                clearOnSend
+                disabled={isLoading}
+                onNewChat={newChat}
+                chatState={disabledButton()}
+                onSend={question => {
+                  appStateContext?.state.isCosmosDBAvailable?.cosmosDB
+                    ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
+                    : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
+                }}
+                onClearChat={
+                  appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
+                    ? clearChat
+                    : newChat
+                }
+              />
+            </Stack>
+          </div>
           {/* Citation Panel */}
           {messages && messages.length > 0 && isCitationPanelOpen && activeCitation && (
             <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Citations Panel">
@@ -890,7 +896,7 @@ const Chat = () => {
                 title={
                   activeCitation.url && !activeCitation.url.includes('blob.core')
                     ? activeCitation.url
-                    : activeCitation.title ?? ''
+                    : (activeCitation.title ?? '')
                 }
                 onClick={() => onViewSource(activeCitation)}>
                 {activeCitation.title}

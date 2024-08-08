@@ -1,17 +1,19 @@
 import localVideo from '../assets/lisa-casual-sitting-idle.mp4'
+import { AvatarProperties } from './useAvatar'
 
 type AvatarProps = {
   remoteVideoRef: React.RefObject<HTMLDivElement>
   localVideoRef: React.RefObject<HTMLVideoElement>
+  avatar: AvatarProperties
 }
 
 export default function Avatar(props: AvatarProps) {
-  const { remoteVideoRef, localVideoRef } = props
+  const { remoteVideoRef, localVideoRef, avatar } = props
   return (
     <>
       <div
         style={{
-          width: '0.1px',
+          width: avatar.isSpeaking || avatar.sessionActive ? '30%' : '0.1px',
           height: '100%',
           objectFit: 'cover'
         }}
@@ -22,6 +24,7 @@ export default function Avatar(props: AvatarProps) {
         ref={localVideoRef}
         autoPlay
         loop
+        hidden={avatar.isSpeaking || avatar.sessionActive}
         style={{
           height: '100%',
           width: '30%',
