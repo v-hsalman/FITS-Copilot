@@ -49,6 +49,8 @@ const formatMonth = (month: string) => {
   }
 }
 
+const allowDeleteConversation = import.meta.env.VITE_ALLOW_USER_DELETE_CONVERSATION
+
 export const ChatHistoryListItemCell: React.FC<ChatHistoryListItemCellProps> = ({ item, onSelect }) => {
   const [isHovered, setIsHovered] = React.useState(false)
   const [edit, setEdit] = useState(false)
@@ -250,13 +252,15 @@ export const ChatHistoryListItemCell: React.FC<ChatHistoryListItemCellProps> = (
             <div className={styles.chatTitle}>{truncatedTitle}</div>
             {(isSelected || isHovered) && (
               <Stack horizontal horizontalAlign="end">
-                <IconButton
-                  className={styles.itemButton}
-                  iconProps={{ iconName: 'Delete' }}
-                  title="Delete"
-                  onClick={toggleDeleteDialog}
-                  onKeyDown={e => (e.key === ' ' ? toggleDeleteDialog() : null)}
-                />
+                {allowDeleteConversation === 'true' && (
+                  <IconButton
+                    className={styles.itemButton}
+                    iconProps={{ iconName: 'Delete' }}
+                    title="Delete"
+                    onClick={toggleDeleteDialog}
+                    onKeyDown={e => (e.key === ' ' ? toggleDeleteDialog() : null)}
+                  />
+                )}
                 <IconButton
                   className={styles.itemButton}
                   iconProps={{ iconName: 'Edit' }}
