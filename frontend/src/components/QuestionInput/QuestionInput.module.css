@@ -1,8 +1,8 @@
 .questionInputContainer{
-  width: 70%;
+  width: 100%;
   align-items: flex-end;
-  border: #f0f0f0 1px solid;
-  background-color: #ffffff;
+  border: #d3d3d3 1px solid;
+  background-color: transparent;
   padding: 1rem;
   padding-bottom: .5rem;
   border-radius: 12px;

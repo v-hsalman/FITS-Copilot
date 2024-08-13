@@ -3,26 +3,51 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  overflow: hidden;
 }
 
 .chatRoot {
+  height: 100%;
   flex: 1;
   display: flex;
+  flex-direction: row;
   margin-top: 0px;
   gap: 5px;
+  padding: 0rem 15rem;
+  overflow: hidden;
+}
+
+.chatRootAvatar {
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  margin-top: 0px;
+  gap: 5px;
+  padding: 0rem 0rem;
+}
+
+@media (max-width: 1150px) {
+  .chatRoot {
+      padding: 0rem 0rem;
+  }
 }
 
 .chatContainer {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: radial-gradient(108.78% 108.78% at 50.02% 19.78%, #ffffff 57.29%, #f5faff 100%);
-  overflow-y: auto;
+  overflow-y: scroll;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
 }
 
+
 .chatEmptyState {
-  flex-grow: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -53,37 +78,42 @@
   color: #616161;
 }
 
+video{
+  border: none;
+}
+
 .chatIcon {
   height: 62px;
   width: auto;
 }
 
 .chatMessageStream {
-  flex-grow: 1;
-  max-width: 1028px;
+  position: relative;
+  flex: 1;
   width: 100%;
   overflow-y: auto;
-  padding-left: 24px;
-  padding-right: 24px;
   display: flex;
   flex-direction: column;
   margin-top: 24px;
+  padding: 0rem 3rem 2rem 3rem;
+}
+
+.chatMessageStream::-webkit-scrollbar { 
+  display: none; 
 }
 
 .chatMessageUser {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 12px;
+  gap: 8px;
 }
 
 .chatMessageUserMessage {
   display: flex;
-  padding: 20px;
-  background: #edf5fd;
+  padding: 1rem;
+  background: #f0f0f0;
   border-radius: 8px;
-  box-shadow:
-    0px 2px 4px rgba(0, 0, 0, 0.14),
-    0px 0px 2px rgba(0, 0, 0, 0.12);
   font-style: normal;
   font-weight: 400;
   font-size: 14px;
@@ -130,18 +160,16 @@
 
 .chatInput {
   width: 100%;
-  position: sticky;
-  flex: 0 0 100px;
-  padding: 2rem;
-  margin-bottom: 50px;
-  margin-top: 8px;
-  align-items: center;
-  justify-content: center;
-  gap:.5rem
+  padding: 1rem 1rem;
+  background-color: white;
 }
 
 .stopButtons{
+  width: 100%;
+  justify-content: center;
+  align-items: center;
   gap: .5rem;
+  margin: .5rem 0; 
 }
 
 .avatarContainer{

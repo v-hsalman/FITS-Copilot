@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
-import { IconButton, Dialog, DialogType, Stack } from '@fluentui/react'
-import { SquareRegular, ShieldLockRegular, ErrorCircleRegular, StopRegular } from '@fluentui/react-icons'
+import { IconButton, Dialog, DialogType, Stack, DirectionalHint } from '@fluentui/react'
+import { ShieldLockRegular, ErrorCircleRegular, StopRegular } from '@fluentui/react-icons'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -41,8 +41,8 @@ import { useBoolean } from '@fluentui/react-hooks'
 
 import useAvatar from '../../hooks/useAvatar'
 import Avatar from '../../hooks/Avatar'
-import { Button } from '@fluentui/react-components'
-
+import { Button, Avatar as FUIAvatar } from '@fluentui/react-components'
+import { DrawerBody, OverlayDrawer } from '@fluentui/react-components'
 const enum messageStatus {
   NotRunning = 'Not Running',
   Processing = 'Processing',
@@ -66,6 +66,7 @@ const Chat = () => {
   const [clearingChat, setClearingChat] = useState<boolean>(false)
   const [hideErrorDialog, { toggle: toggleErrorDialog }] = useBoolean(true)
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
+  const [avatarEnabled, setAvatarEnabled] = useState<boolean>(true)
 
   const { speak, connectAvatar, updateVideoRefs, stopAvatarSpeech, avatar } = useAvatar()
 
@@ -114,6 +115,10 @@ const Chat = () => {
     setTimeout(() => {
       setErrorMsg(null)
     }, 500)
+  }
+
+  const handleSwitch = () => {
+    setAvatarEnabled(!avatarEnabled)
   }
 
   useEffect(() => {
@@ -369,7 +374,6 @@ const Chat = () => {
         return
       }
       if (response?.body) {
-        await connectAvatar()
         const reader = response.body.getReader()
 
         let runningText = ''
@@ -446,7 +450,9 @@ const Chat = () => {
           abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
           return
         }
-        await speak(resultConversation.messages[resultConversation.messages.length - 1].content)
+        if (avatarEnabled) {
+          await speak(resultConversation.messages[resultConversation.messages.length - 1].content)
+        }
         appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation })
         isEmpty(toolMessage)
           ? setMessages([...messages, assistantMessage])
@@ -756,68 +762,76 @@ const Chat = () => {
           </h2>
         </Stack>
       ) : (
-        <Stack horizontal className={styles.chatRoot}>
-          <Avatar avatar={avatar} localVideoRef={localVideoRef} remoteVideoRef={remoteVideoRef} />
-          <div className={styles.chatContainer}>
-            {!messages || messages.length < 1 ? (
-              <Stack className={styles.chatEmptyState}>
-                <img src={FITS} className={styles.chatIcon} aria-hidden="true" />
-                <h1 className={styles.chatEmptyStateTitle}>What can I help you with?</h1>
-                <h2 className={styles.chatEmptyStateSubtitle}>
-                  Designed to provide guidance and assistance for your human resources processes
-                </h2>
-              </Stack>
-            ) : (
-              <div className={styles.chatMessageStream} style={{ marginBottom: isLoading ? '40px' : '0px' }} role="log">
-                {messages.map((answer, index) => (
-                  <>
-                    {answer.role === 'user' ? (
-                      <div className={styles.chatMessageUser} tabIndex={0}>
-                        <div className={styles.chatMessageUserMessage}>{answer.content}</div>
-                      </div>
-                    ) : answer.role === 'assistant' ? (
+        <Stack horizontal className={avatarEnabled ? styles.chatRootAvatar : styles.chatRoot}>
+          {avatarEnabled && <Avatar avatar={avatar} localVideoRef={localVideoRef} remoteVideoRef={remoteVideoRef} />}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div className={styles.chatContainer}>
+              {!messages || messages.length < 1 ? (
+                <Stack className={styles.chatEmptyState}>
+                  <img src={FITS} className={styles.chatIcon} aria-hidden="true" />
+                  <h1 className={styles.chatEmptyStateTitle}>What can I help you with?</h1>
+                  <h2 className={styles.chatEmptyStateSubtitle}>
+                    Designed to provide guidance and assistance for your human resources processes
+                  </h2>
+                </Stack>
+              ) : (
+                <div
+                  className={styles.chatMessageStream}
+                  style={{ marginBottom: isLoading ? '40px' : '0px' }}
+                  role="log">
+                  {messages.map((answer, index) => (
+                    <>
+                      {answer.role === 'user' ? (
+                        <div className={styles.chatMessageUser} tabIndex={0}>
+                          <div className={styles.chatMessageUserMessage}>{answer.content}</div>
+                          <FUIAvatar />
+                        </div>
+                      ) : answer.role === 'assistant' ? (
+                        <div className={styles.chatMessageGpt}>
+                          <Answer
+                            answer={{
+                              answer: answer.content,
+                              citations: parseCitationFromMessage(messages[index - 1]),
+                              message_id: answer.id,
+                              feedback: answer.feedback,
+                              exec_results: execResults
+                            }}
+                            onCitationClicked={c => onShowCitation(c)}
+                            onExectResultClicked={() => onShowExecResult()}
+                          />
+                        </div>
+                      ) : answer.role === ERROR ? (
+                        <div className={styles.chatMessageError}>
+                          <Stack horizontal className={styles.chatMessageErrorContent}>
+                            <ErrorCircleRegular
+                              className={styles.errorIcon}
+                              style={{ color: 'rgba(182, 52, 67, 1)' }}
+                            />
+                            <span>Error</span>
+                          </Stack>
+                          <span className={styles.chatMessageErrorContent}>{answer.content}</span>
+                        </div>
+                      ) : null}
+                    </>
+                  ))}
+                  {showLoadingMessage && (
+                    <>
                       <div className={styles.chatMessageGpt}>
                         <Answer
                           answer={{
-                            answer: answer.content,
-                            citations: parseCitationFromMessage(messages[index - 1]),
-                            message_id: answer.id,
-                            feedback: answer.feedback,
-                            exec_results: execResults
+                            answer: 'Generating answer...',
+                            citations: []
                           }}
-                          onCitationClicked={c => onShowCitation(c)}
-                          onExectResultClicked={() => onShowExecResult()}
+                          onCitationClicked={() => null}
+                          onExectResultClicked={() => null}
                         />
                       </div>
-                    ) : answer.role === ERROR ? (
-                      <div className={styles.chatMessageError}>
-                        <Stack horizontal className={styles.chatMessageErrorContent}>
-                          <ErrorCircleRegular className={styles.errorIcon} style={{ color: 'rgba(182, 52, 67, 1)' }} />
-                          <span>Error</span>
-                        </Stack>
-                        <span className={styles.chatMessageErrorContent}>{answer.content}</span>
-                      </div>
-                    ) : null}
-                  </>
-                ))}
-                {showLoadingMessage && (
-                  <>
-                    <div className={styles.chatMessageGpt}>
-                      <Answer
-                        answer={{
-                          answer: 'Generating answer...',
-                          citations: []
-                        }}
-                        onCitationClicked={() => null}
-                        onExectResultClicked={() => null}
-                      />
-                    </div>
-                  </>
-                )}
-                <div ref={chatMessageStreamEnd} />
-              </div>
-            )}
-
+                    </>
+                  )}
+                  <div ref={chatMessageStreamEnd} />
+                </div>
+              )}
+            </div>
             <Stack className={styles.chatInput}>
               <Stack horizontal className={styles.stopButtons}>
                 {avatar.isSpeaking && (
@@ -856,6 +870,8 @@ const Chat = () => {
               </Stack>
               <QuestionInput
                 clearOnSend
+                handleSwitch={handleSwitch}
+                avatarEnabled={avatarEnabled}
                 disabled={isLoading}
                 onNewChat={newChat}
                 chatState={disabledButton()}
@@ -1007,10 +1023,16 @@ const Chat = () => {
               </Stack>
             </Stack.Item>
           )}
-          {appStateContext?.state.isChatHistoryOpen &&
-            appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && <ChatHistoryPanel />}
         </Stack>
       )}
+      {appStateContext?.state.isChatHistoryOpen &&
+        appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (
+          <OverlayDrawer open={true} position="end">
+            <DrawerBody>
+              <ChatHistoryPanel />
+            </DrawerBody>
+          </OverlayDrawer>
+        )}
     </div>
   )
 }
