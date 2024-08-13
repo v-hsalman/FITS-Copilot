@@ -13,7 +13,7 @@ export default function Avatar(props: AvatarProps) {
     <>
       <div
         style={{
-          width: avatar.isSpeaking || avatar.sessionActive ? '30%' : '0.1px',
+          width: avatar.isSpeaking || avatar.sessionActive ? '40%' : '0.1px',
           height: '100%',
           objectFit: 'cover'
         }}
@@ -27,7 +27,7 @@ export default function Avatar(props: AvatarProps) {
         hidden={avatar.isSpeaking || avatar.sessionActive}
         style={{
           height: '100%',
-          width: '30%',
+          width: '40%',
           objectFit: 'cover'
         }}>
         <source src={localVideo} type="video/mp4" />
