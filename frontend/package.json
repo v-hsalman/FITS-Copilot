@@ -16,7 +16,7 @@
     "install-and-build": "install && run build"
   },
   "dependencies": {
-    "@fluentui/react": "^8.105.3",
+    "@fluentui/react": "^8.120.4",
     "@fluentui/react-components": "^9.54.4",
     "@fluentui/react-hooks": "^8.6.29",
     "@fluentui/react-icons": "^2.0.195",
