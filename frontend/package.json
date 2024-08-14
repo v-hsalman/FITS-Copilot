@@ -16,7 +16,7 @@
     "install-and-build": "install && run build"
   },
   "dependencies": {
-    "@fluentui/react": "^8.120.4",
+    "@fluentui/react": "^8.105.3",
     "@fluentui/react-components": "^9.54.4",
     "@fluentui/react-hooks": "^8.6.29",
     "@fluentui/react-icons": "^2.0.195",
@@ -24,9 +24,11 @@
     "lodash": "^4.17.21",
     "lodash-es": "^4.17.21",
     "microsoft-cognitiveservices-speech-sdk": "^1.38.0",
+    "plotly.js": "^2.32.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^7.0.1",
+    "react-plotly.js": "^2.6.0",
     "react-router-dom": "^6.8.1",
     "react-syntax-highlighter": "^15.5.0",
     "react-uuid": "^2.0.0",
@@ -46,6 +48,7 @@
     "@types/node": "^20.12.7",
     "@types/react": "^18.0.27",
     "@types/react-dom": "^18.0.10",
+    "@types/react-plotly.js": "^2.6.3",
     "@types/react-syntax-highlighter": "^15.5.11",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
