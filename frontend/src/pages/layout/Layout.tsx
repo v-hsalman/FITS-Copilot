@@ -10,6 +10,8 @@ import { AppStateContext } from '../../state/AppProvider'
 
 import styles from './Layout.module.css'
 
+import FITS from '../../assets/FITS.svg'
+
 const Layout = () => {
   const [isSharePanelOpen, setIsSharePanelOpen] = useState<boolean>(false)
   const [copyClicked, setCopyClicked] = useState<boolean>(false)
@@ -49,9 +51,10 @@ const Layout = () => {
       <header className={styles.header} role={'banner'}>
         <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
           <Stack horizontal verticalAlign="center">
-            <Link to="/" className={styles.headerTitleContainer}>
+            <a href="/" className={styles.headerTitleContainer}>
+              <img src={FITS} className={styles.chatIcon} style={{ height: '2rem' }} aria-hidden="true" />
               <h1 className={styles.headerTitle}>FITS Copilot</h1>
-            </Link>
+            </a>
           </Stack>
           <Stack horizontal tokens={{ childrenGap: 4 }} className={styles.shareButtonContainer}>
             {appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (

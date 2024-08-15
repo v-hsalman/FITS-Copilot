@@ -1,11 +1,12 @@
 .container {
-  max-height: calc(100vh - 100px);
-  width: 300px;
+  height: 100%;
 }
 
 .listContainer {
   overflow: hidden auto;
   max-height: calc(90vh - 105px);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .itemCell {
