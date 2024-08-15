@@ -1,9 +1,6 @@
-import Plotly from 'react-plotly.js'
-
 export type AskResponse = {
   answer: string
   citations: Citation[]
-  plotly_data: AzureSqlServerCodeExecResult | null
   error?: string
   message_id?: string
   feedback?: Feedback
@@ -27,17 +24,11 @@ export type ToolMessageContent = {
   intent: string
 }
 
-export type AzureSqlServerCodeExecResult = {
-  data: Plotly.Data[]
-  layout: Partial<Plotly.Layout>
-}
-
 export type AzureSqlServerExecResult = {
   intent: string
   search_query: string | null
   search_result: string | null
   code_generated: string | null
-  code_exec_result?: AzureSqlServerCodeExecResult | undefined
 }
 
 export type AzureSqlServerExecResults = {
