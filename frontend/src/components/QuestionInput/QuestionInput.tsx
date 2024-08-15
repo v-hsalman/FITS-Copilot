@@ -44,6 +44,7 @@ export const QuestionInput = ({
 }: Props) => {
   const [question, setQuestion] = useState<string>('')
   const [micState, setMicState] = useState<microphoneState>('ready')
+  const sttToken = useRef<string | null>(null)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -70,15 +71,22 @@ export const QuestionInput = ({
     }
   }
 
-  async function startSpeechToText() {
-    setMicState('awaiting')
-    const { token } = await fetchSpeechToken()
-    if (token) {
+  const connectSpeechToText = async (token: string) => {
+    return new Promise<void>((resolve, reject) => {
       const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, 'eastus')
       speechConfig.speechRecognitionLanguage = 'en-US'
 
       const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput()
       const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig)
+
+      recognizer.canceled = (s, e) => {
+        if (e.reason === sdk.CancellationReason.Error) {
+          if (e.errorCode === sdk.CancellationErrorCode.ConnectionFailure) {
+            setMicState('awaiting')
+            reject(new Error('Speech token invalid'))
+          }
+        }
+      }
 
       recognizer.sessionStarted = () => {
         setMicState('recording')
@@ -86,6 +94,7 @@ export const QuestionInput = ({
 
       recognizer.sessionStopped = () => {
         setMicState('ready')
+        resolve()
       }
 
       recognizer.recognizing = (s, e) => {
@@ -96,10 +105,27 @@ export const QuestionInput = ({
         if (result.text) {
           sendQuestion(result.text)
         }
-        setMicState('ready')
       })
+    })
+  }
+
+  async function startSpeechToText(retry = 0): Promise<void> {
+    setMicState('awaiting')
+    if (sttToken.current === null) {
+      const { token } = await fetchSpeechToken()
+      sttToken.current = token
+      await connectSpeechToText(token)
     } else {
-      console.error('No token found')
+      try {
+        await connectSpeechToText(sttToken.current)
+      } catch (error: any) {
+        if (error.message === 'Speech token invalid') {
+          if (retry < 3) {
+            sttToken.current = null
+            return startSpeechToText(retry + 1)
+          }
+        }
+      }
     }
   }
 
@@ -149,7 +175,7 @@ export const QuestionInput = ({
               <Button className={styles.microphoneButton} key="mic" appearance="primary" icon={<MicRecordFilled />} />
             ) : (
               <Button
-                onClick={startSpeechToText}
+                onClick={() => startSpeechToText()}
                 disabled={micState === 'awaiting'}
                 className={styles.microphoneButton}
                 appearance="subtle"
