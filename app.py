@@ -37,7 +37,45 @@ from backend.utils import (
 
 bp = Blueprint("routes", __name__, static_folder="static", template_folder="static")
 
+initialFewShotPrompts = [      
+    {
+        "role": "user",
+        "content": "Where can I get help for HR related qustions?"
+    },
+    {
+        "role": "assistant",
+        "content": "Go to your manager or HR department for HR related questions.  For further assistance, you may contact HRNotify@firstinfotech.com "
+    },
+    {
+        "role": "user",
+        "content": "I need help finding about where I can complete  my timesheet?"
+    },
+    
+    {    
+        "role": "assistant",
+      "content": "You can complete your timesheet in the FITS Timekeeping System Deltek. If you trouble accessing deltek, you may contact delteksupport@firstinfotech.com "
+    },
+    {
+        "role": "user",
+        "content": "How do I update my personal  information in the HR system  ?"
+    },
+    {
+        "role": "assistant",
+        "content": "You can update your personal information by logging into the HR portal and navigating to the 'Personal Information' section. After making the necessary updates, make sure to save your changes. If you need further assistance, contact the HR department."
+    },
+    {
+        "role": "user",
+        "content": "What should I do if I have a problem with my paycheck?"
+    },
+    {
+        "role": "assistant",
+        "content": ": Detail  any discrepancies to your Supervisor immediately. They are your first point of contact for resolving payroll issues. You may also contact payroll@firstinfotech.com  "
+        
 
+    }
+
+    
+]
 def create_app():
     app = Quart(__name__)
     app.register_blueprint(bp)
@@ -196,6 +234,8 @@ def prepare_model_args(request_body, request_headers):
             }
         ]
 
+    messages.extend(initialFewShotPrompts)
+
     for message in request_messages:
         if message:
             messages.append(
@@ -204,7 +244,7 @@ def prepare_model_args(request_body, request_headers):
                     "content": message["content"]
                 }
             )
-
+    print(messages)
     user_json = None
     if (MS_DEFENDER_ENABLED):
         authenticated_user_details = get_authenticated_user_details(request_headers)
