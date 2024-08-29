@@ -46,6 +46,7 @@ export default function useAvatar() {
   }, [avatar])
 
   const disconnectAvatar = useCallback(() => {
+    console.log('Disconnecting avatar')
     try {
       avatarSynthesizerRef.current?.close()
       setAvatar(prevAvatar => {
@@ -119,6 +120,8 @@ export default function useAvatar() {
             }
 
             avatar.remoteAvatarRef?.appendChild(videoElement)
+            if (avatar.localAvatarRef) avatar.localAvatarRef.hidden = true
+            if (avatar.remoteAvatarRef) avatar.remoteAvatarRef.style.width = '40%'
             videoElement.style.width = '100%'
             videoElement.style.height = '100%'
             videoElement.style.objectFit = 'cover'
@@ -159,27 +162,26 @@ export default function useAvatar() {
 
   const speak = useCallback(
     async (text: string) => {
-      if (avatar.sessionActive === false) {
-        await connectAvatar()
-      }
-      setAvatar(prevAvatar => {
-        return { ...prevAvatar, isSpeaking: true }
-      })
-      try {
-        const result = await avatarSynthesizerRef.current?.speakTextAsync(text)
-        if (result?.reason === ResultReason.SynthesizingAudioCompleted) {
-          console.log('Speech and avatar synthesized to video stream:')
-          disconnectAvatar()
-        } else {
-          console.log('Unable to speak. Result ID: ' + result?.resultId)
-          console.log('Error: ' + result?.errorDetails)
+      return new Promise<void>(async (resolve, reject) => {
+        if (avatar.sessionActive === false) {
+          await connectAvatar()
         }
-        setAvatar(prevAvatar => {
-          return { ...prevAvatar, isSpeaking: false }
-        })
-      } catch (err) {
-        console.log('Failed to speak. Error: ' + err)
-      }
+        resolve()
+        try {
+          const result = await avatarSynthesizerRef.current?.speakTextAsync(text)
+          if (result?.reason === ResultReason.SynthesizingAudioCompleted) {
+            console.log('Speech and avatar synthesized to video stream:')
+            disconnectAvatar()
+          } else {
+            reject(new Error('Unable to speak. ' + result?.errorDetails))
+          }
+          setAvatar(prevAvatar => {
+            return { ...prevAvatar, isSpeaking: false }
+          })
+        } catch (err) {
+          reject(new Error('Failed to speak. Error: ' + err))
+        }
+      })
     },
     [avatar]
   )

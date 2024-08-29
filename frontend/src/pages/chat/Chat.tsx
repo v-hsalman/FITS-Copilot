@@ -377,47 +377,51 @@ const Chat = () => {
         const reader = response.body.getReader()
 
         let runningText = ''
-        while (true) {
-          setProcessMessages(messageStatus.Processing)
-          const { done, value } = await reader.read()
-          if (done) break
+        setProcessMessages(messageStatus.Processing)
+        const { value } = await reader.read()
 
-          var text = new TextDecoder('utf-8').decode(value)
-          const objects = text.split('\n')
-          objects.forEach(obj => {
-            try {
-              if (obj !== '' && obj !== '{}') {
-                runningText += obj
-                result = JSON.parse(runningText)
-                if (!result.choices?.[0]?.messages?.[0].content) {
-                  errorResponseMessage = NO_CONTENT_ERROR
-                  throw Error()
-                }
-                if (result.choices?.length > 0) {
-                  result.choices[0].messages.forEach(msg => {
-                    msg.id = result.id
-                    msg.date = new Date().toISOString()
-                  })
-                  if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
-                    setShowLoadingMessage(false)
-                  }
-                  result.choices[0].messages.forEach(resultObj => {
-                    processResultMessage(resultObj, userMessage, conversationId)
-                  })
-                }
-                runningText = ''
-              } else if (result.error) {
-                throw Error(result.error)
+        var text = new TextDecoder('utf-8').decode(value)
+        const objects = text.split('\n')
+        let formatedResult = ''
+        objects.forEach(obj => {
+          try {
+            if (obj !== '' && obj !== '{}') {
+              runningText += obj
+              result = JSON.parse(runningText)
+              formatedResult = result.choices[0].messages[1].content.replace(/\[.*?\]/g, '')
+
+              if (!result.choices?.[0]?.messages?.[0].content) {
+                errorResponseMessage = NO_CONTENT_ERROR
+                throw Error()
               }
-            } catch (e) {
-              if (!(e instanceof SyntaxError)) {
-                console.error(e)
-                throw e
-              } else {
-                console.log('Incomplete message. Continuing...')
+              if (result.choices?.length > 0) {
+                result.choices[0].messages.forEach(msg => {
+                  msg.id = result.id
+                  msg.date = new Date().toISOString()
+                })
+                if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
+                  setShowLoadingMessage(false)
+                }
+                result.choices[0].messages.forEach(resultObj => {
+                  processResultMessage(resultObj, userMessage, conversationId)
+                })
               }
+              runningText = ''
+            } else if (result.error) {
+              throw Error(result.error)
             }
-          })
+          } catch (e) {
+            if (!(e instanceof SyntaxError)) {
+              console.error(e)
+              throw e
+            } else {
+              console.log('Incomplete message. Continuing...')
+            }
+          }
+        })
+
+        if (avatarEnabled) {
+          await speak(formatedResult)
         }
 
         let resultConversation
@@ -449,9 +453,6 @@ const Chat = () => {
           setShowLoadingMessage(false)
           abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
           return
-        }
-        if (avatarEnabled) {
-          await speak(resultConversation.messages[resultConversation.messages.length - 1].content)
         }
         appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation })
         isEmpty(toolMessage)
@@ -912,7 +913,7 @@ const Chat = () => {
                 title={
                   activeCitation.url && !activeCitation.url.includes('blob.core')
                     ? activeCitation.url
-                    : (activeCitation.title ?? '')
+                    : activeCitation.title ?? ''
                 }
                 onClick={() => onViewSource(activeCitation)}>
                 {activeCitation.title}
