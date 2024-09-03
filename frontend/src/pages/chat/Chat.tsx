@@ -374,55 +374,76 @@ const Chat = () => {
         return
       }
       if (response?.body) {
-        const reader = response.body.getReader()
-
-        let runningText = ''
         setProcessMessages(messageStatus.Processing)
+        const reader = response.body.getReader()
+        let runningText = ''
         const { value } = await reader.read()
-
         var text = new TextDecoder('utf-8').decode(value)
-        const objects = text.split('\n')
-        let formatedResult = ''
-        objects.forEach(obj => {
-          try {
-            if (obj !== '' && obj !== '{}') {
-              runningText += obj
-              result = JSON.parse(runningText)
-              formatedResult = result.choices[0].messages[1].content.replace(/\[.*?\]/g, '')
+        const object = text.split('\n')[0]
 
-              if (!result.choices?.[0]?.messages?.[0].content) {
-                errorResponseMessage = NO_CONTENT_ERROR
-                throw Error()
-              }
-              if (result.choices?.length > 0) {
-                result.choices[0].messages.forEach(msg => {
-                  msg.id = result.id
-                  msg.date = new Date().toISOString()
-                })
-                if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
-                  setShowLoadingMessage(false)
-                }
-                result.choices[0].messages.forEach(resultObj => {
-                  processResultMessage(resultObj, userMessage, conversationId)
-                })
-              }
+        let formatedResult = ''
+        let result = {} as ChatResponse
+        let messageStream: string[] = []
+
+        if (object !== '' && object !== '{}') {
+          runningText = object
+          result = JSON.parse(runningText)
+          formatedResult = result.choices[0].messages[1].content.replace(/\[.*?\]/g, '')
+          messageStream = result.choices[0].messages[1].content?.match(new RegExp('.{1,' + 50 + '}', 'g')) || []
+        }
+
+        const streamMessage = async (messageStream: string[]) => {
+          return new Promise<void>(async (resolve, reject) => {
+            try {
+              let completeMessage = ''
+
+              await Promise.all(
+                messageStream.map(
+                  (chunk, i) =>
+                    new Promise<void>(resolveTimeout => {
+                      setTimeout(() => {
+                        completeMessage = chunk
+                        if (!result.choices?.[0]?.messages?.[0].content) {
+                          errorResponseMessage = NO_CONTENT_ERROR
+                          reject(new Error(NO_CONTENT_ERROR))
+                          return
+                        }
+                        if (result.choices?.length > 0) {
+                          result.choices[0].messages.forEach(msg => {
+                            msg.id = result.id
+                            msg.date = new Date().toISOString()
+                          })
+                          if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
+                            setShowLoadingMessage(false)
+                          }
+                          result.choices[0].messages.forEach(resultObj => {
+                            resultObj.content = completeMessage
+                            processResultMessage(resultObj, userMessage, conversationId)
+                          })
+                        }
+                        resolveTimeout()
+                      }, i * 100)
+                    })
+                )
+              )
+              resolve()
               runningText = ''
-            } else if (result.error) {
-              throw Error(result.error)
+            } catch (e) {
+              if (!(e instanceof SyntaxError)) {
+                console.error(e)
+                reject(e)
+              } else {
+                console.log('Incomplete message. Continuing...')
+              }
             }
-          } catch (e) {
-            if (!(e instanceof SyntaxError)) {
-              console.error(e)
-              throw e
-            } else {
-              console.log('Incomplete message. Continuing...')
-            }
-          }
-        })
+          })
+        }
 
         if (avatarEnabled) {
           await speak(formatedResult)
         }
+
+        await streamMessage(messageStream)
 
         let resultConversation
         if (conversationId) {

@@ -46,7 +46,6 @@ export default function useAvatar() {
   }, [avatar])
 
   const disconnectAvatar = useCallback(() => {
-    console.log('Disconnecting avatar')
     try {
       avatarSynthesizerRef.current?.close()
       setAvatar(prevAvatar => {
@@ -166,8 +165,11 @@ export default function useAvatar() {
         if (avatar.sessionActive === false) {
           await connectAvatar()
         }
-        resolve()
         try {
+          resolve()
+          setAvatar(prevAvatar => {
+            return { ...prevAvatar, isSpeaking: true }
+          })
           const result = await avatarSynthesizerRef.current?.speakTextAsync(text)
           if (result?.reason === ResultReason.SynthesizingAudioCompleted) {
             console.log('Speech and avatar synthesized to video stream:')
