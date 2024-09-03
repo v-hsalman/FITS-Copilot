@@ -38,6 +38,8 @@ import { QuestionInput } from '../../components/QuestionInput'
 import { ChatHistoryPanel } from '../../components/ChatHistory/ChatHistoryPanel'
 import { AppStateContext } from '../../state/AppProvider'
 import { useBoolean } from '@fluentui/react-hooks'
+import SpeechToSpeechController from '../../components/SpeechToSpeechController/SpeechToSpeechController'
+import useSpeechToText from '../../hooks/useSpeechToText/useSpeechToText'
 
 import useAvatar from '../../hooks/useAvatar'
 import Avatar from '../../hooks/Avatar'
@@ -66,16 +68,19 @@ const Chat = () => {
   const [clearingChat, setClearingChat] = useState<boolean>(false)
   const [hideErrorDialog, { toggle: toggleErrorDialog }] = useBoolean(true)
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
-  const [avatarEnabled, setAvatarEnabled] = useState<boolean>(true)
+  const [avatarEnabled, setAvatarEnabled] = useState<boolean>(false)
+  const [speechToSpeech, setSpeechToSpeech] = useState<boolean>(false)
+  const [question, setQuestion] = useState<string>('')
 
-  const { speak, connectAvatar, updateVideoRefs, stopAvatarSpeech, avatar } = useAvatar()
+  const { micState, onRecognize, onRecognizing, startSpeechToText, stopSpeechToText } = useSpeechToText()
+  const { speak, updateVideoRefs, stopAvatarSpeech, avatar, onEndOfSpeech } = useAvatar()
 
   const remoteVideoRef = useRef<HTMLDivElement | null>(null)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
     updateVideoRefs(remoteVideoRef, localVideoRef)
-  }, [])
+  }, [avatarEnabled])
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -440,6 +445,12 @@ const Chat = () => {
         }
 
         if (avatarEnabled) {
+          const endOfSpeech = async () => {
+            if (abortController.signal.aborted) {
+              if (speechToSpeech) await startSpeechToText()
+            }
+          }
+          onEndOfSpeech(endOfSpeech)
           await speak(formatedResult)
         }
 
@@ -548,6 +559,7 @@ const Chat = () => {
       abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
       setProcessMessages(messageStatus.Done)
     }
+
     return abortController.abort()
   }
 
@@ -642,6 +654,7 @@ const Chat = () => {
   }
 
   const stopGenerating = () => {
+    if (speechToSpeech) stopSpeechToText()
     abortFuncs.current.forEach(a => a.abort())
     setShowLoadingMessage(false)
     setIsLoading(false)
@@ -753,6 +766,23 @@ const Chat = () => {
       appStateContext?.state.chatHistoryLoadingState === ChatHistoryLoadingState.Loading
     )
   }
+
+  const sendQuestion = (sttQuestion?: string) => {
+    if (sttQuestion) {
+      appStateContext?.state.isCosmosDBAvailable?.cosmosDB
+        ? makeApiRequestWithCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
+        : makeApiRequestWithoutCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
+    } else {
+      appStateContext?.state.isCosmosDBAvailable?.cosmosDB
+        ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
+        : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
+    }
+
+    setQuestion('')
+  }
+
+  onRecognize(sendQuestion)
+  onRecognizing(setQuestion)
 
   return (
     <div className={styles.container} role="main">
@@ -873,15 +903,6 @@ const Chat = () => {
                     Stop Avatar's Speech
                   </Button>
                 )}
-                {isLoading && messages.length > 0 && !avatar.isSpeaking && (
-                  <Button
-                    shape="circular"
-                    icon={<StopRegular />}
-                    onClick={stopGenerating}
-                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null)}>
-                    Stop Generating
-                  </Button>
-                )}
               </Stack>
               <Stack>
                 <Dialog
@@ -890,24 +911,41 @@ const Chat = () => {
                   dialogContentProps={errorDialogContentProps}
                   modalProps={modalProps}></Dialog>
               </Stack>
-              <QuestionInput
-                clearOnSend
-                handleSwitch={handleSwitch}
-                avatarEnabled={avatarEnabled}
-                disabled={isLoading}
-                onNewChat={newChat}
-                chatState={disabledButton()}
-                onSend={question => {
-                  appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-                    ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
-                    : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
-                }}
-                onClearChat={
-                  appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
-                    ? clearChat
-                    : newChat
-                }
-              />
+              {speechToSpeech && (
+                <SpeechToSpeechController
+                  onNewChat={newChat}
+                  enableSpeechToSpeech={() => setSpeechToSpeech(!speechToSpeech)}
+                  chatState={disabledButton()}
+                  avatarSpeaking={avatar.isSpeaking || isLoading}
+                  micState={micState}
+                  startSpeechToSpeech={startSpeechToText}
+                  stopSpeechToSpeech={stopSpeechToText}
+                />
+              )}
+              {!speechToSpeech && (
+                <QuestionInput
+                  micState={micState}
+                  setQuestion={setQuestion}
+                  question={question}
+                  toggleSpeechToSpeech={() => {
+                    setSpeechToSpeech(!speechToSpeech)
+                    setAvatarEnabled(true)
+                  }}
+                  clearOnSend
+                  handleSwitch={handleSwitch}
+                  avatarEnabled={avatarEnabled}
+                  disabled={isLoading}
+                  onNewChat={newChat}
+                  chatState={disabledButton()}
+                  onSend={sendQuestion}
+                  startSpeechToText={startSpeechToText}
+                  onClearChat={
+                    appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
+                      ? clearChat
+                      : newChat
+                  }
+                />
+              )}
             </Stack>
           </div>
           {/* Citation Panel */}

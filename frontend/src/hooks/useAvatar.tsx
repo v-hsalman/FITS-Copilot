@@ -27,6 +27,9 @@ export default function useAvatar() {
     isSpeaking: false,
     sessionActive: false
   })
+
+  const onEndOfSpeechRef = useRef<Function>()
+
   useEffect(() => {
     avatarSynthesizerRef.current = avatarSynthesizerState
   }, [avatarSynthesizerState])
@@ -38,6 +41,10 @@ export default function useAvatar() {
     setAvatar(prevAvatar => {
       return { ...prevAvatar, remoteAvatarRef: remoteVideoRef.current, localAvatarRef: localVideoRef.current }
     })
+  }
+
+  const onEndOfSpeech = (callback: Function) => {
+    onEndOfSpeechRef.current = callback
   }
 
   const stopAvatarSpeech = useCallback(async () => {
@@ -166,12 +173,11 @@ export default function useAvatar() {
           await connectAvatar()
         }
         try {
+          setAvatar({ ...avatar, isSpeaking: true })
           resolve()
-          setAvatar(prevAvatar => {
-            return { ...prevAvatar, isSpeaking: true }
-          })
           const result = await avatarSynthesizerRef.current?.speakTextAsync(text)
           if (result?.reason === ResultReason.SynthesizingAudioCompleted) {
+            if (onEndOfSpeechRef.current) onEndOfSpeechRef.current()
             console.log('Speech and avatar synthesized to video stream:')
             disconnectAvatar()
           } else {
@@ -187,5 +193,5 @@ export default function useAvatar() {
     },
     [avatar]
   )
-  return { speak, connectAvatar, disconnectAvatar, updateVideoRefs, avatar, stopAvatarSpeech }
+  return { speak, connectAvatar, disconnectAvatar, updateVideoRefs, avatar, setAvatar, stopAvatarSpeech, onEndOfSpeech }
 }
