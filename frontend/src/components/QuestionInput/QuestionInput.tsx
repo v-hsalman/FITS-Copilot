@@ -46,7 +46,6 @@ export const QuestionInput = ({
   micState,
   toggleSpeechToSpeech
 }: Props) => {
-  const sttToken = useRef<string | null>(null)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
