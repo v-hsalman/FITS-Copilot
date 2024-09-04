@@ -394,7 +394,7 @@ const Chat = () => {
           runningText = object
           result = JSON.parse(runningText)
           formatedResult = result.choices[0].messages[1].content.replace(/\[.*?\]/g, '')
-          messageStream = result.choices[0].messages[1].content?.match(new RegExp('.{1,' + 50 + '}', 'g')) || []
+          messageStream = result.choices[0].messages[1].content?.match(new RegExp('[^]{1,' + 50 + '}|\\n', 'g')) || []
         }
 
         const streamMessage = async (messageStream: string[]) => {
@@ -422,8 +422,12 @@ const Chat = () => {
                             setShowLoadingMessage(false)
                           }
                           result.choices[0].messages.forEach(resultObj => {
-                            resultObj.content = completeMessage
-                            processResultMessage(resultObj, userMessage, conversationId)
+                            if (resultObj.role === 'tool') {
+                              processResultMessage(resultObj, userMessage, conversationId)
+                            } else {
+                              resultObj.content = completeMessage
+                              processResultMessage(resultObj, userMessage, conversationId)
+                            }
                           })
                         }
                         resolveTimeout()
