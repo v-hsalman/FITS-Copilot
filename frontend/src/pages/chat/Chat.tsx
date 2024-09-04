@@ -381,18 +381,15 @@ const Chat = () => {
       if (response?.body) {
         setProcessMessages(messageStatus.Processing)
         const reader = response.body.getReader()
-        let runningText = ''
         const { value } = await reader.read()
         var text = new TextDecoder('utf-8').decode(value)
-        const object = text.split('\n')[0]
 
         let formatedResult = ''
         let result = {} as ChatResponse
         let messageStream: string[] = []
 
-        if (object !== '' && object !== '{}') {
-          runningText = object
-          result = JSON.parse(runningText)
+        if (text !== '' && text !== '{}') {
+          result = JSON.parse(text)
           formatedResult = result.choices[0].messages[1].content.replace(/\[.*?\]/g, '')
           messageStream = result.choices[0].messages[1].content?.match(new RegExp('[^]{1,' + 50 + '}|\\n', 'g')) || []
         }
@@ -436,7 +433,6 @@ const Chat = () => {
                 )
               )
               resolve()
-              runningText = ''
             } catch (e) {
               if (!(e instanceof SyntaxError)) {
                 console.error(e)
