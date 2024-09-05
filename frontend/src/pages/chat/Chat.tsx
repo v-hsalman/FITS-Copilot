@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
 import { IconButton, Dialog, DialogType, Stack, DirectionalHint } from '@fluentui/react'
-import { ShieldLockRegular, ErrorCircleRegular, StopRegular } from '@fluentui/react-icons'
+import { ShieldLockRegular, ErrorCircleRegular, StopRegular, LightbulbFilamentRegular } from '@fluentui/react-icons'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -50,6 +50,15 @@ const enum messageStatus {
   Processing = 'Processing',
   Done = 'Done'
 }
+
+const quickQuestions = [
+  'What is our training incentive policy?',
+  'I got married, what do I need to do?',
+  'I need to take a leave of absence, what should I do?',
+  'Who is our medical provider?',
+  'What does Guardian cover for me?',
+  'What is our PTO Loan Policy?'
+]
 
 const Chat = () => {
   const appStateContext = useContext(AppStateContext)
@@ -825,6 +834,17 @@ const Chat = () => {
                   <h2 className={styles.chatEmptyStateSubtitle}>
                     Designed to provide guidance and assistance for your human resources processes
                   </h2>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gridAutoRows: '1fr',
+                      gap: '1rem'
+                    }}>
+                    {quickQuestions.map(question => (
+                      <QuickQuestion onClick={sendQuestion} question={question} />
+                    ))}
+                  </div>
                 </Stack>
               ) : (
                 <div
@@ -1098,3 +1118,15 @@ const Chat = () => {
 }
 
 export default Chat
+
+type QuickQuestionProps = {
+  question: string
+  onClick: Function
+}
+const QuickQuestion = ({ question, onClick }: QuickQuestionProps) => {
+  return (
+    <Button onClick={() => onClick(question)} icon={<LightbulbFilamentRegular />} appearance="outline">
+      {question}
+    </Button>
+  )
+}
