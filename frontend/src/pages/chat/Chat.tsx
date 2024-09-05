@@ -394,7 +394,6 @@ const Chat = () => {
         var text = new TextDecoder('utf-8').decode(value)
 
         let formatedResult = ''
-        let result = {} as ChatResponse
         let messageStream: string[] = []
 
         if (text !== '' && text !== '{}') {
