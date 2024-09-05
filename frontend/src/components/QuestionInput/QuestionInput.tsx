@@ -8,17 +8,14 @@ import {
   Mic48Filled,
   BroomFilled,
   AddFilled,
-  PersonLightningFilled
+  PersonLightningFilled,
+  ChatSparkleFilled
 } from '@fluentui/react-icons'
-
-import * as sdk from 'microsoft-cognitiveservices-speech-sdk'
 
 import styles from './QuestionInput.module.css'
 
-import { fetchSpeechToken } from '../../api'
-
 interface Props {
-  onSend: (question: string) => void
+  onSend: (question?: string) => void
   disabled: boolean
   clearOnSend?: boolean
   onNewChat: () => void
@@ -26,25 +23,29 @@ interface Props {
   handleSwitch: () => void
   chatState: boolean
   avatarEnabled: boolean
+  startSpeechToText: () => void
+  setQuestion: (question: string) => void
+  question: string
+  micState: 'ready' | 'awaiting' | 'recording'
+  toggleSpeechToSpeech: () => void
 }
-
-type microphoneState = 'ready' | 'awaiting' | 'recording'
 
 const allowDeleteConversation = import.meta.env.VITE_ALLOW_USER_DELETE_CONVERSATION
 
 export const QuestionInput = ({
   onSend,
   disabled,
-  clearOnSend,
   onNewChat,
   onClearChat,
   chatState,
   handleSwitch,
-  avatarEnabled
+  avatarEnabled,
+  startSpeechToText,
+  setQuestion,
+  question,
+  micState,
+  toggleSpeechToSpeech
 }: Props) => {
-  const [question, setQuestion] = useState<string>('')
-  const [micState, setMicState] = useState<microphoneState>('ready')
-  const sttToken = useRef<string | null>(null)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -55,77 +56,7 @@ export const QuestionInput = ({
   const onEnterPress = (ev: React.KeyboardEvent<Element>) => {
     if (ev.key === 'Enter' && !ev.shiftKey && !(ev.nativeEvent?.isComposing === true)) {
       ev.preventDefault()
-      sendQuestion()
-    }
-  }
-
-  const sendQuestion = (sttQuestion?: string) => {
-    if (sttQuestion) {
-      onSend(sttQuestion)
-    } else {
-      onSend(question)
-    }
-
-    if (clearOnSend) {
-      setQuestion('')
-    }
-  }
-
-  const connectSpeechToText = async (token: string) => {
-    return new Promise<void>((resolve, reject) => {
-      const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, 'eastus')
-      speechConfig.speechRecognitionLanguage = 'en-US'
-
-      const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput()
-      const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig)
-
-      recognizer.canceled = (s, e) => {
-        if (e.reason === sdk.CancellationReason.Error) {
-          if (e.errorCode === sdk.CancellationErrorCode.ConnectionFailure) {
-            setMicState('awaiting')
-            reject(new Error('Speech token invalid'))
-          }
-        }
-      }
-
-      recognizer.sessionStarted = () => {
-        setMicState('recording')
-      }
-
-      recognizer.sessionStopped = () => {
-        setMicState('ready')
-        resolve()
-      }
-
-      recognizer.recognizing = (s, e) => {
-        setQuestion(e.result.text)
-      }
-
-      recognizer.recognizeOnceAsync(result => {
-        if (result.text) {
-          sendQuestion(result.text)
-        }
-      })
-    })
-  }
-
-  async function startSpeechToText(retry = 0): Promise<void> {
-    setMicState('awaiting')
-    if (sttToken.current === null) {
-      const { token } = await fetchSpeechToken()
-      sttToken.current = token
-      await connectSpeechToText(token)
-    } else {
-      try {
-        await connectSpeechToText(sttToken.current)
-      } catch (error: any) {
-        if (error.message === 'Speech token invalid') {
-          if (retry < 3) {
-            sttToken.current = null
-            return startSpeechToText(retry + 1)
-          }
-        }
-      }
+      onSend()
     }
   }
 
@@ -169,6 +100,9 @@ export const QuestionInput = ({
               icon={<PersonLightningFilled />}
             />
           </Tooltip>
+          <Tooltip content="Toggle speech to speech" relationship="label">
+            <ToggleButton onClick={toggleSpeechToSpeech} appearance="subtle" icon={<ChatSparkleFilled />} />
+          </Tooltip>
           <Divider className={styles.inputControllsDivider} vertical />
           <Tooltip content="Use microphone" relationship="label">
             {micState === 'recording' ? (
@@ -186,8 +120,8 @@ export const QuestionInput = ({
           </Tooltip>
           <div className={question === '' ? styles.sendButton : styles.sendButtonActive}>
             <Button
-              onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? sendQuestion() : null)}
-              onClick={() => sendQuestion()}
+              onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? onSend() : null)}
+              onClick={() => onSend()}
               disabled={question === ''}
               appearance="subtle"
               icon={<Send48Filled color="#479ef5" />}

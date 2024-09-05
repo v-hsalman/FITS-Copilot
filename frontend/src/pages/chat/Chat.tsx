@@ -38,6 +38,8 @@ import { QuestionInput } from '../../components/QuestionInput'
 import { ChatHistoryPanel } from '../../components/ChatHistory/ChatHistoryPanel'
 import { AppStateContext } from '../../state/AppProvider'
 import { useBoolean } from '@fluentui/react-hooks'
+import SpeechToSpeechController from '../../components/SpeechToSpeechController/SpeechToSpeechController'
+import useSpeechToText from '../../hooks/useSpeechToText/useSpeechToText'
 
 import useAvatar from '../../hooks/useAvatar'
 import Avatar from '../../hooks/Avatar'
@@ -66,16 +68,19 @@ const Chat = () => {
   const [clearingChat, setClearingChat] = useState<boolean>(false)
   const [hideErrorDialog, { toggle: toggleErrorDialog }] = useBoolean(true)
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
-  const [avatarEnabled, setAvatarEnabled] = useState<boolean>(true)
+  const [avatarEnabled, setAvatarEnabled] = useState<boolean>(false)
+  const [speechToSpeech, setSpeechToSpeech] = useState<boolean>(false)
+  const [question, setQuestion] = useState<string>('')
 
-  const { speak, connectAvatar, updateVideoRefs, stopAvatarSpeech, avatar } = useAvatar()
+  const { micState, onRecognize, onRecognizing, startSpeechToText, stopSpeechToText } = useSpeechToText()
+  const { speak, updateVideoRefs, stopAvatarSpeech, avatar, onEndOfSpeech } = useAvatar()
 
   const remoteVideoRef = useRef<HTMLDivElement | null>(null)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
     updateVideoRefs(remoteVideoRef, localVideoRef)
-  }, [])
+  }, [avatarEnabled])
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -374,51 +379,82 @@ const Chat = () => {
         return
       }
       if (response?.body) {
+        setProcessMessages(messageStatus.Processing)
         const reader = response.body.getReader()
+        const { value } = await reader.read()
+        var text = new TextDecoder('utf-8').decode(value)
 
-        let runningText = ''
-        while (true) {
-          setProcessMessages(messageStatus.Processing)
-          const { done, value } = await reader.read()
-          if (done) break
+        let formatedResult = ''
+        let result = {} as ChatResponse
+        let messageStream: string[] = []
 
-          var text = new TextDecoder('utf-8').decode(value)
-          const objects = text.split('\n')
-          objects.forEach(obj => {
+        if (text !== '' && text !== '{}') {
+          result = JSON.parse(text)
+          formatedResult = result.choices[0].messages[1].content.replace(/\[.*?\]/g, '')
+          messageStream = result.choices[0].messages[1].content?.match(new RegExp('[^]{1,' + 50 + '}|\\n', 'g')) || []
+        }
+
+        const streamMessage = async (messageStream: string[]) => {
+          return new Promise<void>(async (resolve, reject) => {
             try {
-              if (obj !== '' && obj !== '{}') {
-                runningText += obj
-                result = JSON.parse(runningText)
-                if (!result.choices?.[0]?.messages?.[0].content) {
-                  errorResponseMessage = NO_CONTENT_ERROR
-                  throw Error()
-                }
-                if (result.choices?.length > 0) {
-                  result.choices[0].messages.forEach(msg => {
-                    msg.id = result.id
-                    msg.date = new Date().toISOString()
-                  })
-                  if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
-                    setShowLoadingMessage(false)
-                  }
-                  result.choices[0].messages.forEach(resultObj => {
-                    processResultMessage(resultObj, userMessage, conversationId)
-                  })
-                }
-                runningText = ''
-              } else if (result.error) {
-                throw Error(result.error)
-              }
+              let completeMessage = ''
+
+              await Promise.all(
+                messageStream.map(
+                  (chunk, i) =>
+                    new Promise<void>(resolveTimeout => {
+                      setTimeout(() => {
+                        completeMessage = chunk
+                        if (!result.choices?.[0]?.messages?.[0].content) {
+                          errorResponseMessage = NO_CONTENT_ERROR
+                          reject(new Error(NO_CONTENT_ERROR))
+                          return
+                        }
+                        if (result.choices?.length > 0) {
+                          result.choices[0].messages.forEach(msg => {
+                            msg.id = result.id
+                            msg.date = new Date().toISOString()
+                          })
+                          if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
+                            setShowLoadingMessage(false)
+                          }
+                          result.choices[0].messages.forEach(resultObj => {
+                            if (resultObj.role === 'tool') {
+                              processResultMessage(resultObj, userMessage, conversationId)
+                            } else {
+                              resultObj.content = completeMessage
+                              processResultMessage(resultObj, userMessage, conversationId)
+                            }
+                          })
+                        }
+                        resolveTimeout()
+                      }, i * 100)
+                    })
+                )
+              )
+              resolve()
             } catch (e) {
               if (!(e instanceof SyntaxError)) {
                 console.error(e)
-                throw e
+                reject(e)
               } else {
                 console.log('Incomplete message. Continuing...')
               }
             }
           })
         }
+
+        if (avatarEnabled) {
+          const endOfSpeech = async () => {
+            if (abortController.signal.aborted) {
+              if (speechToSpeech) await startSpeechToText()
+            }
+          }
+          onEndOfSpeech(endOfSpeech)
+          await speak(formatedResult)
+        }
+
+        await streamMessage(messageStream)
 
         let resultConversation
         if (conversationId) {
@@ -449,9 +485,6 @@ const Chat = () => {
           setShowLoadingMessage(false)
           abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
           return
-        }
-        if (avatarEnabled) {
-          await speak(resultConversation.messages[resultConversation.messages.length - 1].content)
         }
         appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation })
         isEmpty(toolMessage)
@@ -526,6 +559,7 @@ const Chat = () => {
       abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
       setProcessMessages(messageStatus.Done)
     }
+
     return abortController.abort()
   }
 
@@ -620,6 +654,7 @@ const Chat = () => {
   }
 
   const stopGenerating = () => {
+    if (speechToSpeech) stopSpeechToText()
     abortFuncs.current.forEach(a => a.abort())
     setShowLoadingMessage(false)
     setIsLoading(false)
@@ -731,6 +766,23 @@ const Chat = () => {
       appStateContext?.state.chatHistoryLoadingState === ChatHistoryLoadingState.Loading
     )
   }
+
+  const sendQuestion = (sttQuestion?: string) => {
+    if (sttQuestion) {
+      appStateContext?.state.isCosmosDBAvailable?.cosmosDB
+        ? makeApiRequestWithCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
+        : makeApiRequestWithoutCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
+    } else {
+      appStateContext?.state.isCosmosDBAvailable?.cosmosDB
+        ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
+        : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
+    }
+
+    setQuestion('')
+  }
+
+  onRecognize(sendQuestion)
+  onRecognizing(setQuestion)
 
   return (
     <div className={styles.container} role="main">
@@ -851,15 +903,6 @@ const Chat = () => {
                     Stop Avatar's Speech
                   </Button>
                 )}
-                {isLoading && messages.length > 0 && !avatar.isSpeaking && (
-                  <Button
-                    shape="circular"
-                    icon={<StopRegular />}
-                    onClick={stopGenerating}
-                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null)}>
-                    Stop Generating
-                  </Button>
-                )}
               </Stack>
               <Stack>
                 <Dialog
@@ -868,24 +911,41 @@ const Chat = () => {
                   dialogContentProps={errorDialogContentProps}
                   modalProps={modalProps}></Dialog>
               </Stack>
-              <QuestionInput
-                clearOnSend
-                handleSwitch={handleSwitch}
-                avatarEnabled={avatarEnabled}
-                disabled={isLoading}
-                onNewChat={newChat}
-                chatState={disabledButton()}
-                onSend={question => {
-                  appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-                    ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
-                    : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
-                }}
-                onClearChat={
-                  appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
-                    ? clearChat
-                    : newChat
-                }
-              />
+              {speechToSpeech && (
+                <SpeechToSpeechController
+                  onNewChat={newChat}
+                  enableSpeechToSpeech={() => setSpeechToSpeech(!speechToSpeech)}
+                  chatState={disabledButton()}
+                  avatarSpeaking={avatar.isSpeaking || isLoading}
+                  micState={micState}
+                  startSpeechToSpeech={startSpeechToText}
+                  stopSpeechToSpeech={stopSpeechToText}
+                />
+              )}
+              {!speechToSpeech && (
+                <QuestionInput
+                  micState={micState}
+                  setQuestion={setQuestion}
+                  question={question}
+                  toggleSpeechToSpeech={() => {
+                    setSpeechToSpeech(!speechToSpeech)
+                    setAvatarEnabled(true)
+                  }}
+                  clearOnSend
+                  handleSwitch={handleSwitch}
+                  avatarEnabled={avatarEnabled}
+                  disabled={isLoading}
+                  onNewChat={newChat}
+                  chatState={disabledButton()}
+                  onSend={sendQuestion}
+                  startSpeechToText={startSpeechToText}
+                  onClearChat={
+                    appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
+                      ? clearChat
+                      : newChat
+                  }
+                />
+              )}
             </Stack>
           </div>
           {/* Citation Panel */}
@@ -912,7 +972,7 @@ const Chat = () => {
                 title={
                   activeCitation.url && !activeCitation.url.includes('blob.core')
                     ? activeCitation.url
-                    : (activeCitation.title ?? '')
+                    : activeCitation.title ?? ''
                 }
                 onClick={() => onViewSource(activeCitation)}>
                 {activeCitation.title}
