@@ -40,28 +40,29 @@ bp = Blueprint("routes", __name__, static_folder="static", template_folder="stat
 initialFewShotPrompts = [      
     {
         "role": "user",
-        "content": "Where can I get help for HR related qustions?"
+        "content":"Where can I get help for HR related qustions?"
     },
     {
         "role": "assistant",
-        "content": "Go to your manager or HR department for HR related questions.  For further assistance, you may contact HRNotify@firstinfotech.com "
+        "content":"Hey there! For any HR-related questions or issues, you can reach out to the HR team at HRNotify@firstinfotech.com.They can help you with everything from benefits and company policies to leave-related questions and more .If you have specific issues like payroll discrepancies, timesheet problems, or expense reimbursement questions, you can contact payroll@firstinfotech.com .Feel free to reach out to them, and they'll get you sorted! 😊📧"
     },
     {
         "role": "user",
-        "content": "I need help finding about where I can complete  my timesheet?"
+        "content":"I need help finding about where I can access my timesheet?"
     },
     
     {    
         "role": "assistant",
-      "content": "You can complete your timesheet in the FITS Timekeeping System Deltek. If you trouble accessing deltek, you may contact delteksupport@firstinfotech.com "
+        "content":" Hey testusername@constoso.com! Accessing your timesheet is a breeze! 🌬️ Here’s what you need to do: 1.Log into Deltek Costpoint: This is where you can manage your timesheet. If you can’t access it, contact delteksupport@firstinfotech.com for assistance. 2. Recording Time: Make sure to record your hours worked and any Paid Time Off (PTO) in the FITS Timekeeping System. You need to enter and save your actual time worked and PTO, then submit your electronic timesheet to your approving manager by close of business each Friday prior to payday. 3. Approval Process: Your approving manager will review and approve your electronic timesheet by the close of business on the Monday prior to payday. If you have any issues or need further assistance, don’t hesitate to reach out! 🕒💼 "
     },
     {
         "role": "user",
-        "content": "How do I update my personal  information in the HR system  ?"
+        "content":"How often are performance reviews conducted?"
+ 
     },
     {
         "role": "assistant",
-        "content": "You can update your personal information by logging into the HR portal and navigating to the 'Personal Information' section. After making the necessary updates, make sure to save your changes. If you need further assistance, contact the HR department."
+        "content":"Hey there! Performance reviews at FITS are conducted annually, or as business needs dictate. This process is designed to help increase the quality and value of your work performance by addressing factors like your initiative, effort, attitude, and job knowledge. If you ever feel like you need more feedback or want to develop a performance improvement plan, you can request assistance from your Supervisor at any time.Keep rocking it! 🌟"
     },
     {
         "role": "user",
@@ -69,13 +70,10 @@ initialFewShotPrompts = [
     },
     {
         "role": "assistant",
-        "content": ": Detail  any discrepancies to your Supervisor immediately. They are your first point of contact for resolving payroll issues. You may also contact payroll@firstinfotech.com  "
-        
-
+        "content": "Review Your Paycheck: First, double-check your paycheck for any errors or discrepancies. Make sure all hours worked and any deductions are accurately reflected. 1.Contact Your Supervisor: If you find any discrepancies or have questions about your paycheck, immediately report them to your Supervisor. They can help you resolve the issue or escalate it if necessary. 2.Human Resources: If your Supervisor is unable to resolve the issue, you can also reach out to the Human Resources department for further assistance. 3.Payroll Service: If you have selected the direct deposit payroll service, an explanation of your deductions is accessible via our payroll service. Remember, the company will reimburse you in full for any isolated, inadvertent, or improper deductions, as defined by law. If an error is found, you will receive an immediate adjustment, which will be paid no later than your next regular payday. Hope this helps! If you need more assistance, feel free to ask! 😄"
     }
-
-    
 ]
+
 def create_app():
     app = Quart(__name__)
     app.register_blueprint(bp)
@@ -482,6 +480,9 @@ async def add_conversation():
         request_body = await request.get_json()
         history_metadata["conversation_id"] = conversation_id
         request_body["history_metadata"] = history_metadata
+        user_name= authenticated_user['user_name']
+        last_message = request_body["messages"][-1]
+        last_message["content"] = f"{user_name} says: {last_message['content']}"
         return await conversation_internal(request_body, request.headers)
 
     except Exception as e:
