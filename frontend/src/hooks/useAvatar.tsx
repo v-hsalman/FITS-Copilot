@@ -27,9 +27,6 @@ export default function useAvatar() {
     isSpeaking: false,
     sessionActive: false
   })
-
-  const onEndOfSpeechRef = useRef<Function>()
-
   useEffect(() => {
     avatarSynthesizerRef.current = avatarSynthesizerState
   }, [avatarSynthesizerState])
@@ -41,10 +38,6 @@ export default function useAvatar() {
     setAvatar(prevAvatar => {
       return { ...prevAvatar, remoteAvatarRef: remoteVideoRef.current, localAvatarRef: localVideoRef.current }
     })
-  }
-
-  const onEndOfSpeech = (callback: Function) => {
-    onEndOfSpeechRef.current = callback
   }
 
   const stopAvatarSpeech = useCallback(async () => {
@@ -126,8 +119,6 @@ export default function useAvatar() {
             }
 
             avatar.remoteAvatarRef?.appendChild(videoElement)
-            if (avatar.localAvatarRef) avatar.localAvatarRef.hidden = true
-            if (avatar.remoteAvatarRef) avatar.remoteAvatarRef.style.width = '40%'
             videoElement.style.width = '100%'
             videoElement.style.height = '100%'
             videoElement.style.objectFit = 'cover'
@@ -168,30 +159,29 @@ export default function useAvatar() {
 
   const speak = useCallback(
     async (text: string) => {
-      return new Promise<void>(async (resolve, reject) => {
-        if (avatar.sessionActive === false) {
-          await connectAvatar()
-        }
-        try {
-          setAvatar({ ...avatar, isSpeaking: true })
-          resolve()
-          const result = await avatarSynthesizerRef.current?.speakTextAsync(text)
-          if (result?.reason === ResultReason.SynthesizingAudioCompleted) {
-            if (onEndOfSpeechRef.current) onEndOfSpeechRef.current()
-            console.log('Speech and avatar synthesized to video stream:')
-            disconnectAvatar()
-          } else {
-            reject(new Error('Unable to speak. ' + result?.errorDetails))
-          }
-          setAvatar(prevAvatar => {
-            return { ...prevAvatar, isSpeaking: false }
-          })
-        } catch (err) {
-          reject(new Error('Failed to speak. Error: ' + err))
-        }
+      if (avatar.sessionActive === false) {
+        await connectAvatar()
+      }
+      setAvatar(prevAvatar => {
+        return { ...prevAvatar, isSpeaking: true }
       })
+      try {
+        const result = await avatarSynthesizerRef.current?.speakTextAsync(text)
+        if (result?.reason === ResultReason.SynthesizingAudioCompleted) {
+          console.log('Speech and avatar synthesized to video stream:')
+          disconnectAvatar()
+        } else {
+          console.log('Unable to speak. Result ID: ' + result?.resultId)
+          console.log('Error: ' + result?.errorDetails)
+        }
+        setAvatar(prevAvatar => {
+          return { ...prevAvatar, isSpeaking: false }
+        })
+      } catch (err) {
+        console.log('Failed to speak. Error: ' + err)
+      }
     },
     [avatar]
   )
-  return { speak, connectAvatar, disconnectAvatar, updateVideoRefs, avatar, setAvatar, stopAvatarSpeech, onEndOfSpeech }
+  return { speak, connectAvatar, disconnectAvatar, updateVideoRefs, avatar, stopAvatarSpeech }
 }

@@ -40,39 +40,42 @@ bp = Blueprint("routes", __name__, static_folder="static", template_folder="stat
 initialFewShotPrompts = [      
     {
         "role": "user",
-        "content":"Where can I get help for HR related qustions?"
+        "content": "Where can I get help for HR related qustions?"
     },
     {
         "role": "assistant",
-        "content":"Hey there! For any HR-related questions or issues, you can reach out to the HR team at HRNotify@firstinfotech.com.They can help you with everything from benefits and company policies to leave-related questions and more. If you have specific issues like payroll discrepancies, timesheet problems, or expense reimbursement questions, you can contact payroll@firstinfotech.com. Feel free to reach out to them, and they'll get you sorted! 😊📧"
+        "content": "Go to your manager or HR department for HR related questions.  For further assistance, you may contact HRNotify@firstinfotech.com "
     },
     {
         "role": "user",
-        "content":"I need to add a dependent OR I had a child, what do I need to do?"
-    },    
+        "content": "I need help finding about where I can complete  my timesheet?"
+    },
+    
     {    
         "role": "assistant",
-        "content":"Congratulations! Please send an email to HRNotify@firstinfotech.com. We will need paperwork documenting the addition to your family, such as a birth certificate. You will then make elections through Employee Navigator. Please note that for newborns, there is a delay before a SSN is assigned. Once you have the SSN, please let us know so it can be added to Employee Navigator."
+      "content": "You can complete your timesheet in the FITS Timekeeping System Deltek. If you trouble accessing deltek, you may contact delteksupport@firstinfotech.com "
     },
     {
         "role": "user",
-        "content":"I got married, what do I need to do?" 
+        "content": "How do I update my personal  information in the HR system  ?"
     },
     {
         "role": "assistant",
-        "content":"Congratulations! Please notify HR for next steps. To add your spouse to insurance as a dependent, you will need to send a copy of your marriage certificate. You will then be prompted to make elections through Employee Navigator. Please note that if you or your spouse will be changing your legal name, insurance needs your current legal information. Once the name is changed by the Social Security Administration, please let HR know and we will make the update in Employee Navigator. For tax changes, please make updates in Gusto. New tax forms will be generated. If you have additional tax related questions, please email payroll@firstinfotech.com"
+        "content": "You can update your personal information by logging into the HR portal and navigating to the 'Personal Information' section. After making the necessary updates, make sure to save your changes. If you need further assistance, contact the HR department."
     },
     {
         "role": "user",
-        "content": "I changed my address, OR I moved, what do I need to do?"
+        "content": "What should I do if I have a problem with my paycheck?"
     },
     {
         "role": "assistant",
-        "content": "Please send an email with your new address for HRnotify@firstinfotech.com. We will respond with next steps."
+        "content": ": Detail  any discrepancies to your Supervisor immediately. They are your first point of contact for resolving payroll issues. You may also contact payroll@firstinfotech.com  "
+        
+
     }
+
+    
 ]
-
-
 def create_app():
     app = Quart(__name__)
     app.register_blueprint(bp)

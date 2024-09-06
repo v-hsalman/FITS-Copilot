@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
 import { IconButton, Dialog, DialogType, Stack, DirectionalHint } from '@fluentui/react'
-import { ShieldLockRegular, ErrorCircleRegular, StopRegular, LightbulbFilamentRegular } from '@fluentui/react-icons'
+import { ShieldLockRegular, ErrorCircleRegular, StopRegular } from '@fluentui/react-icons'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -38,8 +38,6 @@ import { QuestionInput } from '../../components/QuestionInput'
 import { ChatHistoryPanel } from '../../components/ChatHistory/ChatHistoryPanel'
 import { AppStateContext } from '../../state/AppProvider'
 import { useBoolean } from '@fluentui/react-hooks'
-import SpeechToSpeechController from '../../components/SpeechToSpeechController/SpeechToSpeechController'
-import useSpeechToText from '../../hooks/useSpeechToText/useSpeechToText'
 
 import useAvatar from '../../hooks/useAvatar'
 import Avatar from '../../hooks/Avatar'
@@ -50,15 +48,6 @@ const enum messageStatus {
   Processing = 'Processing',
   Done = 'Done'
 }
-
-const quickQuestions = [
-  'What is our training incentive policy?',
-  'I got married, what do I need to do?',
-  'I need to take a leave of absence, what should I do?',
-  'Who is our medical provider?',
-  'What does Guardian cover for me?',
-  'What is our PTO Loan Policy?'
-]
 
 const Chat = () => {
   const appStateContext = useContext(AppStateContext)
@@ -77,19 +66,16 @@ const Chat = () => {
   const [clearingChat, setClearingChat] = useState<boolean>(false)
   const [hideErrorDialog, { toggle: toggleErrorDialog }] = useBoolean(true)
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
-  const [avatarEnabled, setAvatarEnabled] = useState<boolean>(false)
-  const [speechToSpeech, setSpeechToSpeech] = useState<boolean>(false)
-  const [question, setQuestion] = useState<string>('')
+  const [avatarEnabled, setAvatarEnabled] = useState<boolean>(true)
 
-  const { micState, onRecognize, onRecognizing, startSpeechToText, stopSpeechToText } = useSpeechToText()
-  const { speak, updateVideoRefs, stopAvatarSpeech, avatar, onEndOfSpeech } = useAvatar()
+  const { speak, connectAvatar, updateVideoRefs, stopAvatarSpeech, avatar } = useAvatar()
 
   const remoteVideoRef = useRef<HTMLDivElement | null>(null)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
     updateVideoRefs(remoteVideoRef, localVideoRef)
-  }, [avatarEnabled])
+  }, [])
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -388,82 +374,51 @@ const Chat = () => {
         return
       }
       if (response?.body) {
-        setProcessMessages(messageStatus.Processing)
         const reader = response.body.getReader()
-        const { value } = await reader.read()
-        var text = new TextDecoder('utf-8').decode(value)
 
-        let formatedResult = ''
-        let result = {} as ChatResponse
-        let messageStream: string[] = []
+        let runningText = ''
+        while (true) {
+          setProcessMessages(messageStatus.Processing)
+          const { done, value } = await reader.read()
+          if (done) break
 
-        if (text !== '' && text !== '{}') {
-          result = JSON.parse(text)
-          formatedResult = result.choices[0].messages[1].content.replace(/\[.*?\]/g, '')
-          messageStream = result.choices[0].messages[1].content?.match(new RegExp('[^]{1,' + 50 + '}|\\n', 'g')) || []
-        }
-
-        const streamMessage = async (messageStream: string[]) => {
-          return new Promise<void>(async (resolve, reject) => {
+          var text = new TextDecoder('utf-8').decode(value)
+          const objects = text.split('\n')
+          objects.forEach(obj => {
             try {
-              let completeMessage = ''
-
-              await Promise.all(
-                messageStream.map(
-                  (chunk, i) =>
-                    new Promise<void>(resolveTimeout => {
-                      setTimeout(() => {
-                        completeMessage = chunk
-                        if (!result.choices?.[0]?.messages?.[0].content) {
-                          errorResponseMessage = NO_CONTENT_ERROR
-                          reject(new Error(NO_CONTENT_ERROR))
-                          return
-                        }
-                        if (result.choices?.length > 0) {
-                          result.choices[0].messages.forEach(msg => {
-                            msg.id = result.id
-                            msg.date = new Date().toISOString()
-                          })
-                          if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
-                            setShowLoadingMessage(false)
-                          }
-                          result.choices[0].messages.forEach(resultObj => {
-                            if (resultObj.role === 'tool') {
-                              processResultMessage(resultObj, userMessage, conversationId)
-                            } else {
-                              resultObj.content = completeMessage
-                              processResultMessage(resultObj, userMessage, conversationId)
-                            }
-                          })
-                        }
-                        resolveTimeout()
-                      }, i * 100)
-                    })
-                )
-              )
-              resolve()
+              if (obj !== '' && obj !== '{}') {
+                runningText += obj
+                result = JSON.parse(runningText)
+                if (!result.choices?.[0]?.messages?.[0].content) {
+                  errorResponseMessage = NO_CONTENT_ERROR
+                  throw Error()
+                }
+                if (result.choices?.length > 0) {
+                  result.choices[0].messages.forEach(msg => {
+                    msg.id = result.id
+                    msg.date = new Date().toISOString()
+                  })
+                  if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
+                    setShowLoadingMessage(false)
+                  }
+                  result.choices[0].messages.forEach(resultObj => {
+                    processResultMessage(resultObj, userMessage, conversationId)
+                  })
+                }
+                runningText = ''
+              } else if (result.error) {
+                throw Error(result.error)
+              }
             } catch (e) {
               if (!(e instanceof SyntaxError)) {
                 console.error(e)
-                reject(e)
+                throw e
               } else {
                 console.log('Incomplete message. Continuing...')
               }
             }
           })
         }
-
-        if (avatarEnabled) {
-          const endOfSpeech = async () => {
-            if (abortController.signal.aborted) {
-              if (speechToSpeech) await startSpeechToText()
-            }
-          }
-          onEndOfSpeech(endOfSpeech)
-          await speak(formatedResult)
-        }
-
-        await streamMessage(messageStream)
 
         let resultConversation
         if (conversationId) {
@@ -494,6 +449,9 @@ const Chat = () => {
           setShowLoadingMessage(false)
           abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
           return
+        }
+        if (avatarEnabled) {
+          await speak(resultConversation.messages[resultConversation.messages.length - 1].content)
         }
         appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation })
         isEmpty(toolMessage)
@@ -568,7 +526,6 @@ const Chat = () => {
       abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
       setProcessMessages(messageStatus.Done)
     }
-
     return abortController.abort()
   }
 
@@ -663,7 +620,6 @@ const Chat = () => {
   }
 
   const stopGenerating = () => {
-    if (speechToSpeech) stopSpeechToText()
     abortFuncs.current.forEach(a => a.abort())
     setShowLoadingMessage(false)
     setIsLoading(false)
@@ -776,23 +732,6 @@ const Chat = () => {
     )
   }
 
-  const sendQuestion = (sttQuestion?: string) => {
-    if (sttQuestion) {
-      appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-        ? makeApiRequestWithCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
-        : makeApiRequestWithoutCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
-    } else {
-      appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-        ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
-        : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
-    }
-
-    setQuestion('')
-  }
-
-  onRecognize(sendQuestion)
-  onRecognizing(setQuestion)
-
   return (
     <div className={styles.container} role="main">
       {showAuthMessage ? (
@@ -834,17 +773,6 @@ const Chat = () => {
                   <h2 className={styles.chatEmptyStateSubtitle}>
                     Designed to provide guidance and assistance for your human resources processes
                   </h2>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gridAutoRows: '1fr',
-                      gap: '1rem'
-                    }}>
-                    {quickQuestions.map(question => (
-                      <QuickQuestion onClick={sendQuestion} question={question} />
-                    ))}
-                  </div>
                 </Stack>
               ) : (
                 <div
@@ -923,6 +851,15 @@ const Chat = () => {
                     Stop Avatar's Speech
                   </Button>
                 )}
+                {isLoading && messages.length > 0 && !avatar.isSpeaking && (
+                  <Button
+                    shape="circular"
+                    icon={<StopRegular />}
+                    onClick={stopGenerating}
+                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null)}>
+                    Stop Generating
+                  </Button>
+                )}
               </Stack>
               <Stack>
                 <Dialog
@@ -931,41 +868,24 @@ const Chat = () => {
                   dialogContentProps={errorDialogContentProps}
                   modalProps={modalProps}></Dialog>
               </Stack>
-              {speechToSpeech && (
-                <SpeechToSpeechController
-                  onNewChat={newChat}
-                  enableSpeechToSpeech={() => setSpeechToSpeech(!speechToSpeech)}
-                  chatState={disabledButton()}
-                  avatarSpeaking={avatar.isSpeaking || isLoading}
-                  micState={micState}
-                  startSpeechToSpeech={startSpeechToText}
-                  stopSpeechToSpeech={stopSpeechToText}
-                />
-              )}
-              {!speechToSpeech && (
-                <QuestionInput
-                  micState={micState}
-                  setQuestion={setQuestion}
-                  question={question}
-                  toggleSpeechToSpeech={() => {
-                    setSpeechToSpeech(!speechToSpeech)
-                    setAvatarEnabled(true)
-                  }}
-                  clearOnSend
-                  handleSwitch={handleSwitch}
-                  avatarEnabled={avatarEnabled}
-                  disabled={isLoading}
-                  onNewChat={newChat}
-                  chatState={disabledButton()}
-                  onSend={sendQuestion}
-                  startSpeechToText={startSpeechToText}
-                  onClearChat={
-                    appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
-                      ? clearChat
-                      : newChat
-                  }
-                />
-              )}
+              <QuestionInput
+                clearOnSend
+                handleSwitch={handleSwitch}
+                avatarEnabled={avatarEnabled}
+                disabled={isLoading}
+                onNewChat={newChat}
+                chatState={disabledButton()}
+                onSend={question => {
+                  appStateContext?.state.isCosmosDBAvailable?.cosmosDB
+                    ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
+                    : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
+                }}
+                onClearChat={
+                  appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
+                    ? clearChat
+                    : newChat
+                }
+              />
             </Stack>
           </div>
           {/* Citation Panel */}
@@ -992,7 +912,7 @@ const Chat = () => {
                 title={
                   activeCitation.url && !activeCitation.url.includes('blob.core')
                     ? activeCitation.url
-                    : activeCitation.title ?? ''
+                    : (activeCitation.title ?? '')
                 }
                 onClick={() => onViewSource(activeCitation)}>
                 {activeCitation.title}
@@ -1118,15 +1038,3 @@ const Chat = () => {
 }
 
 export default Chat
-
-type QuickQuestionProps = {
-  question: string
-  onClick: Function
-}
-const QuickQuestion = ({ question, onClick }: QuickQuestionProps) => {
-  return (
-    <Button onClick={() => onClick(question)} icon={<LightbulbFilamentRegular />} appearance="outline">
-      {question}
-    </Button>
-  )
-}
