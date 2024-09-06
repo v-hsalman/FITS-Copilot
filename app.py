@@ -240,7 +240,6 @@ def prepare_model_args(request_body, request_headers):
                     "content": message["content"]
                 }
             )
-    print(messages)
     user_json = None
     if (MS_DEFENDER_ENABLED):
         authenticated_user_details = get_authenticated_user_details(request_headers)
