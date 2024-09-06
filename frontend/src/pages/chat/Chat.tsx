@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
 import { IconButton, Dialog, DialogType, Stack, DirectionalHint } from '@fluentui/react'
-import { ShieldLockRegular, ErrorCircleRegular, StopRegular, LightbulbFilamentRegular } from '@fluentui/react-icons'
+import { ShieldLockRegular, ErrorCircleRegular, StopRegular } from '@fluentui/react-icons'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -48,15 +48,6 @@ const enum messageStatus {
   Processing = 'Processing',
   Done = 'Done'
 }
-
-const quickQuestions = [
-  'What is our training incentive policy?',
-  'I got married, what do I need to do?',
-  'I need to take a leave of absence, what should I do?',
-  'Who is our medical provider?',
-  'What does Guardian cover for me?',
-  'What is our PTO Loan Policy?'
-]
 
 const Chat = () => {
   const appStateContext = useContext(AppStateContext)
@@ -782,23 +773,6 @@ const Chat = () => {
                   <h2 className={styles.chatEmptyStateSubtitle}>
                     Designed to provide guidance and assistance for your human resources processes
                   </h2>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gridAutoRows: '1fr',
-                      gap: '1rem'
-                    }}>
-                    {quickQuestions.map(question => (
-                      <QuickQuestion 
-                      onSend={question => {
-                        appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-                          ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
-                          : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
-                      }}
-                      question={question} />
-                    ))}
-                  </div>
                 </Stack>
               ) : (
                 <div
@@ -1064,26 +1038,3 @@ const Chat = () => {
 }
 
 export default Chat
-
-type QuickQuestionProps = {
-  onSend: (question: string, id?: string) => void
-  question: string
-  conversationId?: string
-}
-const QuickQuestion = ({ onSend, question, conversationId }: QuickQuestionProps) => {
-  const sendQuestion = () => {
-    if (conversationId) {
-      onSend(question, conversationId)
-    } else {
-      onSend(question)
-    }
-  }
-
-  return (
-    <Button 
-      onClick={sendQuestion}
-      icon={<LightbulbFilamentRegular />} appearance="outline">
-      {question}
-    </Button>
-  )
-}
