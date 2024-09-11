@@ -209,6 +209,11 @@ def create_or_update_search_index(
                 "type": "Edm.String",
                 "searchable": True,
             },
+            {
+                "name": "DLAC",
+                "type": "Collection(Edm.String)",
+                "searchable": True,
+            },
         ],
         "suggesters": [],
         "scoringProfiles": [],
@@ -392,6 +397,7 @@ def create_index(config, credential, form_recognizer_client=None, embedding_mode
         data_configs.append({
             "path": config["data_path"],
             "url_prefix": config.get("url_prefix", None),
+            "group_ids": config.get("group_ids", None)
         })
     if "data_paths" in config:
         data_configs.extend(config["data_paths"])
@@ -410,7 +416,7 @@ def create_index(config, credential, form_recognizer_client=None, embedding_mode
         elif os.path.exists(data_config["path"]):
             result = chunk_directory(data_config["path"], num_tokens=config["chunk_size"], token_overlap=config.get("token_overlap",0),
                                     azure_credential=credential, form_recognizer_client=form_recognizer_client, use_layout=use_layout, njobs=njobs,
-                                    add_embeddings=add_embeddings, embedding_endpoint=embedding_model_endpoint, url_prefix=data_config["url_prefix"])
+                                    add_embeddings=add_embeddings, embedding_endpoint=embedding_model_endpoint, url_prefix=data_config["url_prefix"], group_ids=data_config["group_ids"])
         else:
             raise Exception(f"Path {data_config['path']} does not exist and is not a blob URL. Please check the path and try again.")
 
