@@ -267,7 +267,7 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
     authentication: Optional[dict] = None
     embedding_dependency: Optional[dict] = None
     fields_mapping: Optional[dict] = None
-    filter: Optional[str] = Field(default=None, exclude=True)
+    filter: Optional[str] = Field(default=None, exclude=False)
     
     @field_validator('content_columns', 'vector_columns', mode="before")
     @classmethod
