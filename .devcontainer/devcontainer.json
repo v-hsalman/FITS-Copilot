@@ -18,7 +18,8 @@
                 "VisualStudioExptTeam.vscodeintellicode",
                 "ms-edgedevtools.vscode-edge-devtools",
                 "esbenp.prettier-vscode",
-                "ms-python.debugpy"
+                "ms-python.debugpy",
+                "irarainey.applicationregistrations"
             ]
         },
         "codespaces": {
