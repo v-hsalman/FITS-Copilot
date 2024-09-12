@@ -72,6 +72,7 @@ initialFewShotPrompts = [
     }
 ]
 
+
 def create_app():
     app = Quart(__name__)
     app.register_blueprint(bp)

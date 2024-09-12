@@ -244,6 +244,7 @@ class Document(object):
     url: Optional[str] = None
     metadata: Optional[Dict] = None
     contentVector: Optional[List[float]] = None
+    DLAC: Optional[str] = None
 
 def cleanup_content(content: str) -> str:
     """Cleans up the given content using regexes
@@ -651,7 +652,7 @@ def get_embedding(text, embedding_model_endpoint=None, embedding_model_key=None,
     
     FLAG_EMBEDDING_MODEL = os.getenv("FLAG_EMBEDDING_MODEL", "AOAI")
     FLAG_COHERE = os.getenv("FLAG_COHERE", "ENGLISH")
-    FLAG_AOAI = os.getenv("FLAG_AOAI", "V3")
+    FLAG_AOAI = os.getenv("FLAG_AOAI", "V2")
 
     if azure_credential is None and (endpoint is None or key is None):
         raise Exception("EMBEDDING_MODEL_ENDPOINT and EMBEDDING_MODEL_KEY are required for embedding")
@@ -662,11 +663,7 @@ def get_embedding(text, embedding_model_endpoint=None, embedding_model_key=None,
             base_url = endpoint_parts[0]
             deployment_id = endpoint_parts[1].split("/embeddings")[0]
             api_version = endpoint_parts[1].split("api-version=")[1].split("&")[0]
-            if azure_credential is not None:
-                api_key = azure_credential.get_token("https://cognitiveservices.azure.com/.default").token
-            else:
-                api_key = embedding_model_key if embedding_model_key else os.getenv("AZURE_OPENAI_API_KEY")
-            
+            api_key = os.getenv("AZURE_OPENAI_API_KEY")
             client = AzureOpenAI(api_version=api_version, azure_endpoint=base_url, api_key=api_key)
             if FLAG_AOAI == "V2":
                 embeddings = client.embeddings.create(model=deployment_id, input=text)
@@ -750,7 +747,8 @@ def chunk_content(
     use_layout = False,
     add_embeddings = False,
     azure_credential = None,
-    embedding_endpoint = None
+    embedding_endpoint = None,
+    dlac = None
 ) -> ChunkingResult:
     """Chunks the given content. If ignore_errors is true, returns None
         in case of an error
@@ -805,7 +803,8 @@ def chunk_content(
                         content=chunk,
                         title=doc.title,
                         url=url,
-                        contentVector=doc.contentVector
+                        contentVector=doc.contentVector,
+                        DLAC=dlac
                     )
                 )
             else:
@@ -841,7 +840,8 @@ def chunk_file(
     use_layout = False,
     add_embeddings=False,
     azure_credential = None,
-    embedding_endpoint = None
+    embedding_endpoint = None,
+    dlac = None
 ) -> ChunkingResult:
     """Chunks the given file.
     Args:
@@ -889,7 +889,8 @@ def chunk_file(
         use_layout=use_layout,
         add_embeddings=add_embeddings,
         azure_credential=azure_credential,
-        embedding_endpoint=embedding_endpoint
+        embedding_endpoint=embedding_endpoint,
+        dlac=dlac
     )
 
 
@@ -906,7 +907,8 @@ def process_file(
         use_layout = False,
         add_embeddings = False,
         azure_credential = None,
-        embedding_endpoint = None
+        embedding_endpoint = None,
+        group_ids = None
     ):
 
     if not form_recognizer_client:
@@ -919,7 +921,6 @@ def process_file(
         if url_prefix:
             url_path = url_prefix + rel_file_path
             url_path = convert_escaped_to_posix(url_path)
-
         result = chunk_file(
             file_path,
             ignore_errors=ignore_errors,
@@ -932,7 +933,8 @@ def process_file(
             use_layout=use_layout,
             add_embeddings=add_embeddings,
             azure_credential=azure_credential,
-            embedding_endpoint=embedding_endpoint
+            embedding_endpoint=embedding_endpoint,
+            dlac=group_ids
         )
         for chunk_idx, chunk_doc in enumerate(result.chunks):
             chunk_doc.filepath = rel_file_path
@@ -999,7 +1001,8 @@ def chunk_directory(
         njobs=4,
         add_embeddings = False,
         azure_credential = None,
-        embedding_endpoint = None
+        embedding_endpoint = None,
+        group_ids = None
 ):
     """
     Chunks the given directory recursively
@@ -1025,7 +1028,7 @@ def chunk_directory(
     num_unsupported_format_files = 0
     num_files_with_errors = 0
     skipped_chunks = 0
-
+    group_ids = group_ids.split(',')
     all_files_directory = get_files_recursively(directory_path)
     files_to_process = [file_path for file_path in all_files_directory if os.path.isfile(file_path)]
     print(f"Total files to process={len(files_to_process)} out of total directory size={len(all_files_directory)}")
@@ -1041,7 +1044,7 @@ def chunk_directory(
                                        token_overlap=token_overlap,
                                        extensions_to_process=extensions_to_process,
                                        form_recognizer_client=form_recognizer_client, use_layout=use_layout, add_embeddings=add_embeddings,
-                                       azure_credential=azure_credential, embedding_endpoint=embedding_endpoint)
+                                       azure_credential=azure_credential, embedding_endpoint=embedding_endpoint, group_ids=group_ids)
             if is_error:
                 num_files_with_errors += 1
                 continue
@@ -1057,7 +1060,7 @@ def chunk_directory(
                                        token_overlap=token_overlap,
                                        extensions_to_process=extensions_to_process,
                                        form_recognizer_client=None, use_layout=use_layout, add_embeddings=add_embeddings,
-                                       azure_credential=azure_credential, embedding_endpoint=embedding_endpoint)
+                                       azure_credential=azure_credential, embedding_endpoint=embedding_endpoint, group_ids=group_ids)
         with ProcessPoolExecutor(max_workers=njobs) as executor:
             futures = list(tqdm(executor.map(process_file_partial, files_to_process), total=len(files_to_process)))
             for result, is_error in futures:

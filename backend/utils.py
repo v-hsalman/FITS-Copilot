@@ -45,7 +45,10 @@ def fetchUserGroups(userToken, nextLink=None):
     else:
         endpoint = "https://graph.microsoft.com/v1.0/me/transitiveMemberOf?$select=id"
 
-    headers = {"Authorization": "bearer " + userToken}
+    headers = {
+        "Authorization": "Bearer " + userToken,
+        "Host": "graph.microsoft.com",
+        }
     try:
         r = requests.get(endpoint, headers=headers)
         if r.status_code != 200:
