@@ -1028,7 +1028,7 @@ def chunk_directory(
     num_unsupported_format_files = 0
     num_files_with_errors = 0
     skipped_chunks = 0
-
+    group_ids = group_ids.split(',')
     all_files_directory = get_files_recursively(directory_path)
     files_to_process = [file_path for file_path in all_files_directory if os.path.isfile(file_path)]
     print(f"Total files to process={len(files_to_process)} out of total directory size={len(all_files_directory)}")
@@ -1060,7 +1060,7 @@ def chunk_directory(
                                        token_overlap=token_overlap,
                                        extensions_to_process=extensions_to_process,
                                        form_recognizer_client=None, use_layout=use_layout, add_embeddings=add_embeddings,
-                                       azure_credential=azure_credential, embedding_endpoint=embedding_endpoint)
+                                       azure_credential=azure_credential, embedding_endpoint=embedding_endpoint, group_ids=group_ids)
         with ProcessPoolExecutor(max_workers=njobs) as executor:
             futures = list(tqdm(executor.map(process_file_partial, files_to_process), total=len(files_to_process)))
             for result, is_error in futures:
