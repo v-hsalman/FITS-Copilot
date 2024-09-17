@@ -24,7 +24,7 @@ initializeIcons()
 const msalConfig = {
   auth: {
     clientId: CLIENT_ID,
-    authority: `${AUTHORITY_URL}${TENANT_ID}`
+    authority: `https://login.microsoftonline.com/${TENANT_ID}`
   }
 }
 
