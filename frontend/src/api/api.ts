@@ -17,16 +17,6 @@ export async function conversationApi(options: ConversationRequest, abortSignal:
   return response
 }
 
-export async function getUserInfo(): Promise<UserInfo[]> {
-  const response = await fetch('/.auth/me')
-  if (!response.ok) {
-    console.log('No identity provider found. Access to chat will be blocked.')
-    return []
-  }
-
-  const payload = await response.json()
-  return payload
-}
 
 // export const fetchChatHistoryInit = async (): Promise<Conversation[] | null> => {
 export const fetchChatHistoryInit = (): Conversation[] | null => {
@@ -115,23 +105,30 @@ export const historyRead = async (convId: string): Promise<ChatMessage[]> => {
 export const historyGenerate = async (
   options: ConversationRequest,
   abortSignal: AbortSignal,
+  token?:string,
   convId?: string
 ): Promise<Response> => {
+  if(!token) {
+    console.error('No token provided')
+    return new Response()
+  }
   let body
   if (convId) {
     body = JSON.stringify({
       conversation_id: convId,
-      messages: options.messages
+      messages: options.messages,
+      token: token
     })
   } else {
     body = JSON.stringify({
-      messages: options.messages
+      messages: options.messages,
+      token: token
     })
   }
   const response = await fetch('/history/generate', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
     body: body,
     signal: abortSignal
@@ -353,14 +350,14 @@ export const historyMessageFeedback = async (messageId: string, feedback: string
   return response
 }
 
-export const fetchSpeechToken = async() => {
-  try{
+export const fetchSpeechToken = async () => {
+  try {
     const response = await fetch('/token', {
       method: 'GET'
     })
     const data = await response.json()
     return data
-  }catch(err){
+  } catch (err) {
     return err
   }
 }
