@@ -23,7 +23,6 @@ import {
   ToolMessageContent,
   AzureSqlServerExecResults,
   ChatResponse,
-  getUserInfo,
   Conversation,
   historyGenerate,
   historyUpdate,
@@ -45,6 +44,9 @@ import useAvatar from '../../hooks/useAvatar'
 import Avatar from '../../hooks/Avatar'
 import { Button, Avatar as FUIAvatar } from '@fluentui/react-components'
 import { DrawerBody, OverlayDrawer } from '@fluentui/react-components'
+import { useMsalAuthentication } from '@azure/msal-react'
+import getUserAccessToken from '../../utils/getUserAccessToken'
+import { InteractionType } from '@azure/msal-browser'
 const enum messageStatus {
   NotRunning = 'Not Running',
   Processing = 'Processing',
@@ -62,7 +64,6 @@ const quickQuestions = [
 
 const Chat = () => {
   const appStateContext = useContext(AppStateContext)
-  const AUTH_ENABLED = appStateContext?.state.frontendSettings?.auth_enabled
   const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showLoadingMessage, setShowLoadingMessage] = useState<boolean>(false)
@@ -86,6 +87,8 @@ const Chat = () => {
 
   const remoteVideoRef = useRef<HTMLDivElement | null>(null)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
+
+  useMsalAuthentication(InteractionType.Redirect)
 
   useEffect(() => {
     updateVideoRefs(remoteVideoRef, localVideoRef)
@@ -138,19 +141,6 @@ const Chat = () => {
   useEffect(() => {
     setIsLoading(appStateContext?.state.chatHistoryLoadingState === ChatHistoryLoadingState.Loading)
   }, [appStateContext?.state.chatHistoryLoadingState])
-
-  const getUserInfoList = async () => {
-    if (!AUTH_ENABLED) {
-      setShowAuthMessage(false)
-      return
-    }
-    const userInfoList = await getUserInfo()
-    if (userInfoList.length === 0 && window.location.hostname !== '127.0.0.1') {
-      setShowAuthMessage(true)
-    } else {
-      setShowAuthMessage(false)
-    }
-  }
 
   let assistantMessage = {} as ChatMessage
   let toolMessage = {} as ChatMessage
@@ -352,9 +342,10 @@ const Chat = () => {
     let result = {} as ChatResponse
     var errorResponseMessage = 'Please try again. If the problem persists, please contact the site administrator.'
     try {
+      const accessToken = await getUserAccessToken()
       const response = conversationId
-        ? await historyGenerate(request, abortController.signal, conversationId)
-        : await historyGenerate(request, abortController.signal)
+        ? await historyGenerate(request, abortController.signal, accessToken, conversationId)
+        : await historyGenerate(request, abortController.signal, accessToken)
       if (!response?.ok) {
         const responseJson = await response.json()
         errorResponseMessage =
@@ -731,10 +722,6 @@ const Chat = () => {
       setProcessMessages(messageStatus.NotRunning)
     }
   }, [processMessages])
-
-  useEffect(() => {
-    if (AUTH_ENABLED !== undefined) getUserInfoList()
-  }, [AUTH_ENABLED])
 
   useLayoutEffect(() => {
     chatMessageStreamEnd.current?.scrollIntoView({ behavior: 'smooth' })
