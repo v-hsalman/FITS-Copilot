@@ -16,6 +16,8 @@
     "install-and-build": "install && run build"
   },
   "dependencies": {
+    "@azure/msal-browser": "^3.23.0",
+    "@azure/msal-react": "^2.0.22",
     "@fluentui/react": "^8.105.3",
     "@fluentui/react-components": "^9.54.4",
     "@fluentui/react-hooks": "^8.6.29",

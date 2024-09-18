@@ -36,7 +36,7 @@ def test_dotenv_no_datasource_2(app_settings):
     assert app_settings.azure_openai is not None
 
     
-def test_dotenv_with_azure_search_success(app_settings):
+async def test_dotenv_with_azure_search_success(app_settings):
     # Validate model object
     assert app_settings.search is not None
     assert app_settings.base_settings.datasource_type == "AzureCognitiveSearch"
@@ -45,7 +45,7 @@ def test_dotenv_with_azure_search_success(app_settings):
     assert app_settings.azure_openai is not None
     
     # Validate API payload structure
-    payload = app_settings.datasource.construct_payload_configuration()
+    payload = await app_settings.datasource.construct_payload_configuration()
     assert payload["type"] == "azure_search"
     assert payload["parameters"] is not None
     assert payload["parameters"]["endpoint"] == "https://search_service.search.windows.net"
