@@ -12,23 +12,9 @@ import {
   ChatSparkleFilled
 } from '@fluentui/react-icons'
 
-import styles from './QuestionInput.module.css'
+import { Props } from './types'
 
-interface Props {
-  onSend: (question?: string) => void
-  disabled: boolean
-  clearOnSend?: boolean
-  onNewChat: () => void
-  onClearChat: () => void
-  handleSwitch: () => void
-  chatState: boolean
-  avatarEnabled: boolean
-  startSpeechToText: () => void
-  setQuestion: (question: string) => void
-  question: string
-  micState: 'ready' | 'awaiting' | 'recording'
-  toggleSpeechToSpeech: () => void
-}
+import styles from './QuestionInput.module.css'
 
 const allowDeleteConversation = import.meta.env.VITE_ALLOW_USER_DELETE_CONVERSATION
 
@@ -37,7 +23,6 @@ export const QuestionInput = ({
   disabled,
   onNewChat,
   onClearChat,
-  chatState,
   handleSwitch,
   avatarEnabled,
   startSpeechToText,
@@ -78,13 +63,13 @@ export const QuestionInput = ({
                 onClick={onClearChat}
                 appearance="subtle"
                 icon={<BroomFilled />}
-                disabled={chatState}
+                disabled={disabled}
                 aria-label="Clear chat button"></Button>
             </Tooltip>
           )}
           <Tooltip content="New conversation" relationship="label">
             <Button
-              disabled={chatState}
+              disabled={disabled}
               onClick={onNewChat}
               appearance="subtle"
               icon={<AddFilled />}
@@ -115,7 +100,7 @@ export const QuestionInput = ({
             ) : (
               <Button
                 onClick={() => startSpeechToText()}
-                disabled={micState === 'awaiting'}
+                disabled={micState === 'awaiting' || disabled}
                 className={styles.microphoneButton}
                 appearance="subtle"
                 icon={<Mic48Filled />}

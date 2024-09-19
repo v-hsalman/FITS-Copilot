@@ -4,13 +4,13 @@ import { StsControllerProps } from './types'
 import { AddFilled, ChatSparkleFilled, MicFilled, MicRecordFilled } from '@fluentui/react-icons'
 
 export default function SpeechToSpeechController({
-  enableSpeechToSpeech,
+  toggleSpeechToSpeech,
   onNewChat,
-  chatState,
   startSpeechToSpeech,
   stopSpeechToSpeech,
   micState,
-  avatarSpeaking
+  avatarSpeaking,
+  disabled
 }: StsControllerProps) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -28,13 +28,18 @@ export default function SpeechToSpeechController({
                 onClick={onNewChat}
                 appearance="subtle"
                 icon={<AddFilled />}
-                disabled={chatState}
+                disabled={disabled}
                 aria-label="Create new chat button"></Button>
             </Tooltip>
           </Stack>
           <Stack style={{ justifyContent: 'center' }}>
             <Tooltip content="Toggle speech to speech" relationship="label">
-              <ToggleButton onClick={enableSpeechToSpeech} appearance="subtle" icon={<ChatSparkleFilled />} />
+              <ToggleButton
+                disabled={disabled}
+                onClick={toggleSpeechToSpeech}
+                appearance="subtle"
+                icon={<ChatSparkleFilled />}
+              />
             </Tooltip>
           </Stack>
         </Stack>

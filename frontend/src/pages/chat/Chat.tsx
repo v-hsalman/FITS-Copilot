@@ -319,17 +319,6 @@ const Chat = () => {
             }
           })
         }
-
-        if (avatarEnabled) {
-          const endOfSpeech = async () => {
-            if (abortController.signal.aborted) {
-              if (speechToSpeech) await startSpeechToText()
-            }
-          }
-          onEndOfSpeech(endOfSpeech)
-          await speak(formatedResult)
-        }
-
         await streamMessage(messageStream)
 
         let resultConversation
@@ -363,9 +352,16 @@ const Chat = () => {
           return
         }
         appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation })
-        isEmpty(toolMessage)
-          ? setMessages([...messages, assistantMessage])
-          : setMessages([...messages, toolMessage, assistantMessage])
+
+        if (avatarEnabled) {
+          const endOfSpeech = async () => {
+            if (abortController.signal.aborted) {
+              if (speechToSpeech) await startSpeechToText()
+            }
+          }
+          onEndOfSpeech(endOfSpeech)
+          await speak(formatedResult)
+        }
       }
     } catch (e) {
       if (!abortController.signal.aborted) {
@@ -793,12 +789,12 @@ const Chat = () => {
               {speechToSpeech && (
                 <SpeechToSpeechController
                   onNewChat={newChat}
-                  enableSpeechToSpeech={() => setSpeechToSpeech(!speechToSpeech)}
-                  chatState={disabledButton()}
+                  toggleSpeechToSpeech={() => setSpeechToSpeech(!speechToSpeech)}
                   avatarSpeaking={avatar.isSpeaking || isLoading}
                   micState={micState}
                   startSpeechToSpeech={startSpeechToText}
                   stopSpeechToSpeech={stopSpeechToText}
+                  disabled={isLoading}
                 />
               )}
               {!speechToSpeech && (
@@ -815,7 +811,6 @@ const Chat = () => {
                   avatarEnabled={avatarEnabled}
                   disabled={isLoading}
                   onNewChat={newChat}
-                  chatState={disabledButton()}
                   onSend={sendQuestion}
                   startSpeechToText={startSpeechToText}
                   onClearChat={
