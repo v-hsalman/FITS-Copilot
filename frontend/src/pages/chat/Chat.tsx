@@ -89,6 +89,8 @@ const Chat = () => {
 
   useMsalAuthentication(InteractionType.Redirect)
 
+  useMsalAuthentication(InteractionType.Redirect)
+
   useEffect(() => {
     updateVideoRefs(remoteVideoRef, localVideoRef)
   }, [avatarEnabled])
@@ -219,9 +221,12 @@ const Chat = () => {
     var errorResponseMessage = 'Please try again. If the problem persists, please contact the site administrator.'
     try {
       const accessToken = await getUserAccessToken()
+      const accessToken = await getUserAccessToken()
       const response = conversationId
         ? await historyGenerate(request, abortController.signal, accessToken, conversationId)
-        : await historyGenerate(request, abortController.signal, accessToken)
+        : (await historyGenerate(request, abortController.signal, accessToken))
+          ? await historyGenerate(request, abortController.signal, accessToken, conversationId)
+          : await historyGenerate(request, abortController.signal, accessToken)
       if (!response?.ok) {
         const responseJson = await response.json()
         errorResponseMessage =

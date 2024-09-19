@@ -109,6 +109,10 @@ export const historyGenerate = async (
   token?:string,
   convId?: string
 ): Promise<Response> => {
+  if(!token) {
+    console.error('No token provided')
+    return new Response()
+  }
   let body
   if (convId) {
     body = JSON.stringify({

@@ -55,3 +55,19 @@ export default function App() {
     </MsalProvider>
   )
 }
+    <MsalProvider instance={msalInstance}>
+      <FluentProvider theme={webLightTheme}>
+        <AppStateProvider>
+          <HashRouter>
+            <Routes>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Chat />} />
+                <Route path="*" element={<NoPage />} />
+              </Route>
+            </Routes>
+          </HashRouter>
+        </AppStateProvider>
+      </FluentProvider>
+    </MsalProvider>
+  )
+}
