@@ -9,19 +9,18 @@ import NoPage from './pages/NoPage'
 import { AppStateProvider } from './state/AppProvider'
 
 import { MsalProvider } from '@azure/msal-react'
-import { PublicClientApplication } from '@azure/msal-browser'
+import { Configuration, PublicClientApplication } from '@azure/msal-browser'
 
 import { FluentProvider, webLightTheme } from '@fluentui/react-components'
 
 import './index.css'
 
 const CLIENT_ID = import.meta.env.VITE_CLIENT_ID
-const AUTHORITY_URL = import.meta.env.VITE_AUTHORITY_URL
 const TENANT_ID = import.meta.env.VITE_TENANT_ID
 
 initializeIcons()
 
-const msalConfig = {
+const msalConfig: Configuration = {
   auth: {
     clientId: CLIENT_ID,
     authority: `https://login.microsoftonline.com/${TENANT_ID}`

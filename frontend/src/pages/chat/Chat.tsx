@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
-import { IconButton, Dialog, DialogType, Stack, DirectionalHint } from '@fluentui/react'
+import { IconButton, Dialog, DialogType, Stack } from '@fluentui/react'
 import { ShieldLockRegular, ErrorCircleRegular, StopRegular, LightbulbFilamentRegular } from '@fluentui/react-icons'
 
 import ReactMarkdown from 'react-markdown'
@@ -42,8 +42,7 @@ import useSpeechToText from '../../hooks/useSpeechToText/useSpeechToText'
 
 import useAvatar from '../../hooks/useAvatar'
 import Avatar from '../../hooks/Avatar'
-import { Button, Avatar as FUIAvatar } from '@fluentui/react-components'
-import { DrawerBody, OverlayDrawer } from '@fluentui/react-components'
+import { DrawerBody, OverlayDrawer, Button, ButtonProps, Avatar as FUIAvatar } from '@fluentui/react-components'
 import { useMsalAuthentication } from '@azure/msal-react'
 import getUserAccessToken from '../../utils/getUserAccessToken'
 import { InteractionType } from '@azure/msal-browser'
@@ -178,129 +177,6 @@ const Chat = () => {
         ? setMessages([...messages, assistantMessage])
         : setMessages([...messages, toolMessage, assistantMessage])
     }
-  }
-
-  const makeApiRequestWithoutCosmosDB = async (question: string, conversationId?: string) => {
-    setIsLoading(true)
-    setShowLoadingMessage(true)
-    const abortController = new AbortController()
-    abortFuncs.current.unshift(abortController)
-
-    const userMessage: ChatMessage = {
-      id: uuid(),
-      role: 'user',
-      content: question,
-      date: new Date().toISOString()
-    }
-
-    let conversation: Conversation | null | undefined
-    if (!conversationId) {
-      conversation = {
-        id: conversationId ?? uuid(),
-        title: question,
-        messages: [userMessage],
-        date: new Date().toISOString()
-      }
-    } else {
-      conversation = appStateContext?.state?.currentChat
-      if (!conversation) {
-        console.error('Conversation not found.')
-        setIsLoading(false)
-        setShowLoadingMessage(false)
-        abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
-        return
-      } else {
-        conversation.messages.push(userMessage)
-      }
-    }
-
-    appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation })
-    setMessages(conversation.messages)
-
-    const request: ConversationRequest = {
-      messages: [...conversation.messages.filter(answer => answer.role !== ERROR)]
-    }
-
-    let result = {} as ChatResponse
-    try {
-      const response = await conversationApi(request, abortController.signal)
-      if (response?.body) {
-        const reader = response.body.getReader()
-        let runningText = ''
-        while (true) {
-          setProcessMessages(messageStatus.Processing)
-          const { done, value } = await reader.read()
-          if (done) break
-
-          var text = new TextDecoder('utf-8').decode(value)
-          const objects = text.split('\n')
-          objects.forEach(obj => {
-            try {
-              if (obj !== '' && obj !== '{}') {
-                runningText += obj
-                result = JSON.parse(runningText)
-                if (result.choices?.length > 0) {
-                  result.choices[0].messages.forEach(msg => {
-                    msg.id = result.id
-                    msg.date = new Date().toISOString()
-                  })
-                  if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
-                    setShowLoadingMessage(false)
-                  }
-                  result.choices[0].messages.forEach(resultObj => {
-                    processResultMessage(resultObj, userMessage, conversationId)
-                  })
-                } else if (result.error) {
-                  throw Error(result.error)
-                }
-                runningText = ''
-              }
-            } catch (e) {
-              if (!(e instanceof SyntaxError)) {
-                console.error(e)
-                throw e
-              } else {
-                console.log('Incomplete message. Continuing...')
-              }
-            }
-          })
-        }
-        conversation.messages.push(toolMessage, assistantMessage)
-        appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation })
-        setMessages([...messages, toolMessage, assistantMessage])
-      }
-    } catch (e) {
-      if (!abortController.signal.aborted) {
-        let errorMessage =
-          'An error occurred. Please try again. If the problem persists, please contact the site administrator.'
-        if (result.error?.message) {
-          errorMessage = result.error.message
-        } else if (typeof result.error === 'string') {
-          errorMessage = result.error
-        }
-
-        errorMessage = parseErrorMessage(errorMessage)
-
-        let errorChatMsg: ChatMessage = {
-          id: uuid(),
-          role: ERROR,
-          content: errorMessage,
-          date: new Date().toISOString()
-        }
-        conversation.messages.push(errorChatMsg)
-        appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation })
-        setMessages([...messages, errorChatMsg])
-      } else {
-        setMessages([...messages, userMessage])
-      }
-    } finally {
-      setIsLoading(false)
-      setShowLoadingMessage(false)
-      abortFuncs.current = abortFuncs.current.filter(a => a !== abortController)
-      setProcessMessages(messageStatus.Done)
-    }
-
-    return abortController.abort()
   }
 
   const makeApiRequestWithCosmosDB = async (question: string, conversationId?: string) => {
@@ -765,13 +641,9 @@ const Chat = () => {
 
   const sendQuestion = (sttQuestion?: string) => {
     if (sttQuestion) {
-      appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-        ? makeApiRequestWithCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
-        : makeApiRequestWithoutCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
+      makeApiRequestWithCosmosDB(sttQuestion, appStateContext?.state.currentChat?.id)
     } else {
-      appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-        ? makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
-        : makeApiRequestWithoutCosmosDB(question, appStateContext?.state.currentChat?.id)
+      makeApiRequestWithCosmosDB(question, appStateContext?.state.currentChat?.id)
     }
 
     setQuestion('')
@@ -829,7 +701,7 @@ const Chat = () => {
                       gap: '1rem'
                     }}>
                     {quickQuestions.map(question => (
-                      <QuickQuestion onClick={sendQuestion} question={question} />
+                      <QuickQuestion disabled={isLoading} handleClick={sendQuestion} question={question} />
                     ))}
                   </div>
                 </Stack>
@@ -979,7 +851,7 @@ const Chat = () => {
                 title={
                   activeCitation.url && !activeCitation.url.includes('blob.core')
                     ? activeCitation.url
-                    : activeCitation.title ?? ''
+                    : (activeCitation.title ?? '')
                 }
                 onClick={() => onViewSource(activeCitation)}>
                 {activeCitation.title}
@@ -1108,11 +980,16 @@ export default Chat
 
 type QuickQuestionProps = {
   question: string
-  onClick: Function
-}
-const QuickQuestion = ({ question, onClick }: QuickQuestionProps) => {
+  handleClick: Function
+} & ButtonProps
+
+const QuickQuestion = ({ question, handleClick, ...buttonProps }: QuickQuestionProps) => {
   return (
-    <Button onClick={() => onClick(question)} icon={<LightbulbFilamentRegular />} appearance="outline">
+    <Button
+      {...buttonProps}
+      onClick={() => handleClick(question)}
+      icon={<LightbulbFilamentRegular />}
+      appearance="outline">
       {question}
     </Button>
   )

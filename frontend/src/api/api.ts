@@ -2,14 +2,15 @@ import { chatHistorySampleData } from '../constants/chatHistory'
 
 import { ChatMessage, Conversation, ConversationRequest, CosmosDBHealth, CosmosDBStatus, UserInfo } from './models'
 
-export async function conversationApi(options: ConversationRequest, abortSignal: AbortSignal): Promise<Response> {
+export async function conversationApi(options: ConversationRequest, abortSignal: AbortSignal, token?:string): Promise<Response> {
   const response = await fetch('/conversation', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      messages: options.messages
+      messages: options.messages,
+      token:token
     }),
     signal: abortSignal
   })
@@ -108,10 +109,6 @@ export const historyGenerate = async (
   token?:string,
   convId?: string
 ): Promise<Response> => {
-  if(!token) {
-    console.error('No token provided')
-    return new Response()
-  }
   let body
   if (convId) {
     body = JSON.stringify({

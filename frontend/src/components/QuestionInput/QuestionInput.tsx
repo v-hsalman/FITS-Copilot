@@ -46,7 +46,6 @@ export const QuestionInput = ({
   micState,
   toggleSpeechToSpeech
 }: Props) => {
-
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const focusInput = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -97,11 +96,17 @@ export const QuestionInput = ({
               checked={avatarEnabled}
               onClick={handleSwitch}
               appearance="subtle"
+              disabled={disabled}
               icon={<PersonLightningFilled />}
             />
           </Tooltip>
           <Tooltip content="Toggle speech to speech" relationship="label">
-            <ToggleButton onClick={toggleSpeechToSpeech} appearance="subtle" icon={<ChatSparkleFilled />} />
+            <ToggleButton
+              disabled={disabled}
+              onClick={toggleSpeechToSpeech}
+              appearance="subtle"
+              icon={<ChatSparkleFilled />}
+            />
           </Tooltip>
           <Divider className={styles.inputControllsDivider} vertical />
           <Tooltip content="Use microphone" relationship="label">
