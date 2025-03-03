@@ -35,14 +35,25 @@ export type AzureSqlServerExecResults = {
   all_exec_results: AzureSqlServerExecResult[]
 }
 
+
+export type User = {
+  fullname: string
+  firstname: string
+  email: string
+  preferred_username: string
+}
+
 export type ChatMessage = {
   id: string
+  inquiry_id?: string
   role: string
   content: string
   end_turn?: boolean
   date: string
   feedback?: Feedback
   context?: string
+  user_name?: string
+  user_email?: string
 }
 
 export type ExecResults = {

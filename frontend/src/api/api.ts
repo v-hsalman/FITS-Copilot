@@ -1,6 +1,6 @@
 import { chatHistorySampleData } from '../constants/chatHistory'
 
-import { ChatMessage, Conversation, ConversationRequest, CosmosDBHealth, CosmosDBStatus, UserInfo } from './models'
+import { ChatMessage, Conversation, ConversationRequest, CosmosDBHealth, CosmosDBStatus, User, UserInfo } from './models'
 
 export async function conversationApi(options: ConversationRequest, abortSignal: AbortSignal): Promise<Response> {
   const response = await fetch('/conversation', {
@@ -17,16 +17,70 @@ export async function conversationApi(options: ConversationRequest, abortSignal:
   return response
 }
 
+
 export async function getUserInfo(): Promise<UserInfo[]> {
-  const response = await fetch('/.auth/me')
-  if (!response.ok) {
-    console.log('No identity provider found. Access to chat will be blocked.')
-    return []
+  try {
+    const response = await fetch('/.auth/me')
+    if (!response.ok) {
+      throw new Error(`Authentication error! status: ${response.status}`)
+    }
+    const payload = await response.json()
+    return payload
+  } catch (error) {
+    console.error(error)
+    // In case of an error during authentication, we return a default user object which cannot access the Chat.
+    return [
+      {
+        access_token: '',
+        expires_on: '',
+        id_token:
+          'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAZW1haWwuY29tIiwibmFtZSI6IlVzZXIiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ1c2VyQGVtYWlsLmNvbSIsImlhdCI6MTUxNjIzOTAyMn0.nlIqCQbVVnnxcSQqLE-gQHpTD7Feo1gfnKO1KAaTAfbrDmRIuv3F1CMgUAo3vZhLDrYmCzIwpLMY-CUpc7xLAQs2RuYdW2HsrTHe7wu2jg0MbrMvuTl4hHexUMezbXw-l40l8-1RjLhVKiQ4NtA8mDSCi2VxKAQL1lKXLgmOngVfbP02r6tiDo65HMz4EroGdo1D2Ax6uE5OdfJEfKY6NzpDz0DzLtxCqnadSzQF-9sgctXh8I2FP7kAtiOk_hpa0LEjKKqDdWLGn1FQMXX66REKRAN2lIhjec_4hGEd6J7RcKUl51BJhfxaOijFhg3Cov7ytWT3M7nb0EzaJfAq4g',
+        provider_name: '',
+        user_claims: [
+          {
+            typ: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+            val: 'sample_user_email_schema@email.com'
+          },
+          { typ: 'name', val: 'User' },
+          { typ: 'preferred_username', val: 'sample_user_email_preferred@email.com' }
+        ],
+        user_id: ''
+      }
+    ]
+  }
+}
+
+export async function defineUser(): Promise<User | null> {
+  let user: User = {
+    fullname: '',
+    firstname: '',
+    email: '',
+    preferred_username: ''
   }
 
-  const payload = await response.json()
-  return payload
+  try {
+    const res = await getUserInfo()
+
+    let fullName = res[0].user_claims?.find((e: { typ: string }) => e.typ === 'name')?.val || 'User'
+    let firstName = fullName.split(' ')[0] || 'User'
+    let email =
+      res[0]?.user_claims?.find(
+        (e: { typ: string }) => e.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+      )?.val || 'user@email.com'
+    let preferredUsername =
+      res[0]?.user_claims?.find((e: { typ: string }) => e.typ === 'preferred_username')?.val || 'user@email.com'
+
+    user.fullname = fullName
+    user.firstname = firstName
+    user.email = email
+    user.preferred_username = preferredUsername
+  } catch (error) {
+    console.error('An error occurred while defining the user:', error)
+  }
+
+  return user
 }
+
 
 // export const fetchChatHistoryInit = async (): Promise<Conversation[] | null> => {
 export const fetchChatHistoryInit = (): Conversation[] | null => {

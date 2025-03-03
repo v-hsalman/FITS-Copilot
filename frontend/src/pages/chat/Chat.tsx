@@ -31,7 +31,8 @@ import {
   ChatHistoryLoadingState,
   CosmosDBStatus,
   ErrorMessage,
-  ExecResults
+  ExecResults,
+  User
 } from '../../api'
 import { Answer } from '../../components/Answer'
 import { QuestionInput } from '../../components/QuestionInput'
@@ -60,6 +61,8 @@ const quickQuestions = [
   'What is our PTO Loan Policy?'
 ]
 
+const userGreeting = 'Hi'
+
 const Chat = () => {
   const appStateContext = useContext(AppStateContext)
   const AUTH_ENABLED = appStateContext?.state.frontendSettings?.auth_enabled
@@ -80,6 +83,8 @@ const Chat = () => {
   const [avatarEnabled, setAvatarEnabled] = useState<boolean>(false)
   const [speechToSpeech, setSpeechToSpeech] = useState<boolean>(false)
   const [question, setQuestion] = useState<string>('')
+  const [chatTitle, setChatTitle] = useState<string>('Hi!')
+  const [user, setUser] = useState<User | null>(appStateContext!.state.user)
 
   const { micState, onRecognize, onRecognizing, startSpeechToText, stopSpeechToText } = useSpeechToText()
   const { speak, updateVideoRefs, stopAvatarSpeech, avatar, onEndOfSpeech } = useAvatar()
@@ -156,7 +161,7 @@ const Chat = () => {
   let toolMessage = {} as ChatMessage
   let assistantContent = ''
 
-  const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage, conversationId?: string) => {
+  const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage, qta_id: string, conversationId?: string) => {
     if (resultMessage.content.includes('all_exec_results')) {
       const parsedExecResults = JSON.parse(resultMessage.content) as AzureSqlServerExecResults
       setExecResults(parsedExecResults.all_exec_results)
@@ -166,6 +171,7 @@ const Chat = () => {
       assistantContent += resultMessage.content
       assistantMessage = resultMessage
       assistantMessage.content = assistantContent
+      assistantMessage.inquiry_id = qta_id
 
       if (resultMessage.context) {
         toolMessage = {
@@ -177,7 +183,10 @@ const Chat = () => {
       }
     }
 
-    if (resultMessage.role === TOOL) toolMessage = resultMessage
+    if (resultMessage.role === TOOL) {
+      toolMessage = resultMessage
+      toolMessage.inquiry_id = qta_id
+    }
 
     if (!conversationId) {
       isEmpty(toolMessage)
@@ -319,11 +328,19 @@ const Chat = () => {
     const abortController = new AbortController()
     abortFuncs.current.unshift(abortController)
 
+    const qta_id = uuid()
+
     const userMessage: ChatMessage = {
       id: uuid(),
       role: 'user',
+      inquiry_id: qta_id,
       content: question,
       date: new Date().toISOString()
+    }
+
+    if (user && user.fullname.toLowerCase() != 'dummy' && user.email.toLowerCase() != 'dummy') {
+      userMessage.user_name = user.fullname
+      userMessage.user_email = user.email
     }
 
     //api call params set here (generate)
@@ -416,7 +433,7 @@ const Chat = () => {
                     setShowLoadingMessage(false)
                   }
                   result.choices[0].messages.forEach(resultObj => {
-                    processResultMessage(resultObj, userMessage, conversationId)
+                    processResultMessage(resultObj, userMessage, qta_id, conversationId)
                   })
                 }
                 runningText = ''
@@ -717,6 +734,16 @@ const Chat = () => {
   }, [processMessages])
 
   useEffect(() => {
+    setUser(appStateContext!.state.user)
+
+    appStateContext!.state.user?.firstname
+      ? setChatTitle(userGreeting + ', ' + appStateContext!.state.user?.firstname + '!') // Hi, First_Name!
+      : setChatTitle(userGreeting + '!')
+
+  }, [appStateContext?.state.user])
+
+
+  useEffect(() => {
     if (AUTH_ENABLED !== undefined) getUserInfoList()
   }, [AUTH_ENABLED])
 
@@ -814,7 +841,7 @@ const Chat = () => {
               {!messages || messages.length < 1 ? (
                 <Stack className={styles.chatEmptyState}>
                   <img src={FITS} className={styles.chatIcon} aria-hidden="true" />
-                  <h1 className={styles.chatEmptyStateTitle}>What can I help you with?</h1>
+                  <h1 className={styles.chatEmptyStateTitle}>{chatTitle}</h1>
                   <h2 className={styles.chatEmptyStateSubtitle}>
                     Designed to provide guidance and assistance for your human resources processes
                   </h2>

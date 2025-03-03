@@ -10,7 +10,9 @@ import {
   FrontendSettings,
   frontendSettings,
   historyEnsure,
-  historyList
+  historyList,
+  User,
+  defineUser
 } from '../api'
 
 import { appStateReducer } from './AppReducer'
@@ -23,7 +25,8 @@ export interface AppState {
   filteredChatHistory: Conversation[] | null
   currentChat: Conversation | null
   frontendSettings: FrontendSettings | null
-  feedbackState: { [answerId: string]: Feedback.Neutral | Feedback.Positive | Feedback.Negative }
+  feedbackState: { [answerId: string]: Feedback.Neutral | Feedback.Positive | Feedback.Negative },
+  user: User | null
 }
 
 export type Action =
@@ -44,6 +47,7 @@ export type Action =
       payload: { answerId: string; feedback: Feedback.Positive | Feedback.Negative | Feedback.Neutral }
     }
   | { type: 'GET_FEEDBACK_STATE'; payload: string }
+  | {type : 'SET_USER'; payload: User}
 
 const initialState: AppState = {
   isChatHistoryOpen: false,
@@ -56,7 +60,8 @@ const initialState: AppState = {
     status: CosmosDBStatus.NotConfigured
   },
   frontendSettings: null,
-  feedbackState: {}
+  feedbackState: {},
+  user: null
 }
 
 export const AppStateContext = createContext<
@@ -75,6 +80,13 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
   const [state, dispatch] = useReducer(appStateReducer, initialState)
 
   useEffect(() => {
+    // initialize user
+    defineUser().then(response => {
+      if (response) {
+        dispatch({ type: 'SET_USER', payload: response })
+      }
+    })
+
     // Check for cosmosdb config and fetch initial data here
     const fetchChatHistory = async (offset = 0): Promise<Conversation[] | null> => {
       const result = await historyList(offset)

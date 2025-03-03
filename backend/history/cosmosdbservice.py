@@ -141,6 +141,13 @@ class CosmosConversationClient():
 
         if self.enable_message_feedback:
             message['feedback'] = ''
+
+        if input_message['inquiry_id']:
+            message['inquiryId'] = input_message['inquiry_id']
+
+        if message['role'] == 'user':
+            message['userName'] = input_message['user_name']
+            message['userEmail'] = input_message['user_email']
         
         resp = await self.container_client.upsert_item(message)  
         if resp:
