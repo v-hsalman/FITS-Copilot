@@ -62,11 +62,7 @@ export async function defineUser(): Promise<User | null> {
     const res = await getUserInfo()
 
     let fullName = res[0].user_claims?.find((e: { typ: string }) => e.typ === 'name')?.val || 'User'
-
-    let firstName = fullName.split(',')[1].strip() || 'User'
-    let lastName = fullName.split(',')[0] || ''
-    fullName = firstName + ' ' + lastName
-
+    let firstName = fullName.split(' ')[0] || 'User'
     let email =
       res[0]?.user_claims?.find(
         (e: { typ: string }) => e.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'

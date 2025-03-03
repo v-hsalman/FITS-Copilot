@@ -841,7 +841,7 @@ const Chat = () => {
               {!messages || messages.length < 1 ? (
                 <Stack className={styles.chatEmptyState}>
                   <img src={FITS} className={styles.chatIcon} aria-hidden="true" />
-                  <h1 className={styles.chatEmptyStateTitle}>{chatTitle}</h1>
+                  <h1 className={styles.chatEmptyStateTitle}>What can I help you with?</h1>
                   <h2 className={styles.chatEmptyStateSubtitle}>
                     Designed to provide guidance and assistance for your human resources processes
                   </h2>
